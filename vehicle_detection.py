@@ -22,16 +22,20 @@ def load_data(picture_path, label_path):
                 #print(img_file_path)
                 with open(json_file_path, 'r') as f:
                     frame_info = json.load(f)
+                    classes = []
                     for object in frame_info['objects']:
-                        classes = []
                         if (object['label'] == 'car'):
                             polygons = np.asarray(object['polygon'], dtype=np.float32)
                             left_top = np.min(polygons, axis=0)
                             right_bottom = np.max(polygons, axis=0)
                             #print(left_top, right_bottom)
                             classes.append({'class': 'car', 'position':[left_top, right_bottom]})
-                        if (len(classes)!=0):
-                            data_list.append({'file_path':img_file_path, 'label':classes})
+                        if (object['label'] == 'person'):
+                            polygons = np.asarray(object['polygon'], dtype=np.float32)
+                            left_top = np.min(polygons, axis=0)
+                            right_bottom = np.max(polygons, axis=0)
+                            classes.append({'class': 'person', 'position':[left_top, right_bottom]})
+                    data_list.append({'file_path':img_file_path, 'label':classes})
     return data_list
 
     # with open(file_path, "r") as f:
