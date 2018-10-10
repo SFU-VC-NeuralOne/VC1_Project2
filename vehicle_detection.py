@@ -38,17 +38,6 @@ def load_data(picture_path, label_path):
                     data_list.append({'file_path':img_file_path, 'label':classes})
     return data_list
 
-    # with open(file_path, "r") as f:
-    #     for line in f:
-    #         if line.startswith('#'):
-    #             # ignore the line start with '#'
-    #             continue
-    #
-    #         tokens = line.split(';')  # split the line by ','
-    #         label = int(tokens[0])
-    #         file_path = tokens[-1].strip()  # .strip() removes space or empty char.
-    #         data_list.append({'label': label, 'file_path': file_path})
-
 def train(net, train_data_loader, validation_data_loader):
     net.cuda()
     criterion = torch.nn.MSELoss()

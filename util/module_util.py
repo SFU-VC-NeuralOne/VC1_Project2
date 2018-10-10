@@ -1,6 +1,11 @@
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 import shutil
+
+from torch.autograd import Variable
+
 
 def forward_from(module_seq: nn.Sequential,
                  start_idx: int,

@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 ''' Prior Bounding Box  ------------------------------------------------------------------------------------------------
@@ -11,24 +12,28 @@ def generate_prior_bboxes(prior_layer_cfg):
     Use VGG_SSD 300x300 as example:
     Feature map dimension for each output layers:
        Layer    | Map Dim (h, w) | Single bbox size that covers in the original image
-    1. Conv4    | (38x38)        | (30x30) (unit. pixels)
-    2. Conv7    | (19x19)        | (60x60)
-    3. Conv8_2  | (10x10)        | (111x111)
-    4. Conv9_2  | (5x5)          | (162x162)
-    5. Conv10_2 | (3x3)          | (213x213)
-    6. Conv11_2 | (1x1)          | (264x264)
+    1. Conv5    | (38x38)        | (30x30) (unit. pixels)
+    2. Conv11    | (19x19)        | (60x60)
+    3. Conv14_2  | (10x10)        | (111x111)
+    4. Conv15_2  | (5x5)          | (162x162)
+    5. Conv16_2 | (3x3)          | (213x213)
+    6. Conv17_2 | (1x1)          | (264x264)
+
     NOTE: The setting may be different using MobileNet v3, you have to set your own implementation.
     Tip: see the reference: 'Choosing scales and aspect ratios for default boxes' in original paper page 5.
     :param prior_layer_cfg: configuration for each feature layer, see the 'example_prior_layer_cfg' in the following.
     :return prior bounding boxes with form of (cx, cy, w, h), where the value range are from 0 to 1, dim (1, num_priors, 4)
     """
-    example_prior_layer_cfg = [
+    prior_layer_cfg = [
         # Example:
-        {'layer_name': 'Conv4', 'feature_dim_hw': (64, 64), 'bbox_size': (60, 60), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-        {'layer_name': 'Conv4', 'feature_dim_hw': (64, 64), 'bbox_size': (60, 60), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
-        # ...
-        # TODO: define your feature map settings
+        {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+        {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+        {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+        {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+        {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+        {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
     ]
+    sk_list = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88, 1.05]
 
     priors_bboxes = []
     for feat_level_idx in range(0, len(prior_layer_cfg)):               # iterate each layers
@@ -37,22 +42,30 @@ def generate_prior_bboxes(prior_layer_cfg):
         layer_aspect_ratio = layer_cfg['aspect_ratio']
 
         # Todo: compute S_{k} (reference: SSD Paper equation 4.)
-        sk = 0
-        fk = 0
+        sk = sk_list[feat_level_idx]
+        fk = layer_cfg['feature_dim_hw'][0]
 
         for y in range(0, layer_feature_dim[0]):
             for x in range(0,layer_feature_dim[0]):
 
                 # Todo: compute bounding box center
-                cx = 0
-                cy = 0
+                cx = (x+0.5)/fk
+                cy = (y+0.5)/fk
 
                 # Todo: generate prior bounding box with respect to the aspect ratio
                 for aspect_ratio in layer_aspect_ratio:
-                    h = 0
-                    w = 0
-                    priors_bboxes.append([cx, cy, w, h])
-
+                    if aspect_ratio == '1t':
+                        sk_ = np.sqrt(sk_list[feat_level_idx] * sk_list[feat_level_idx+1])
+                        aspect_ratio=1.0
+                        h = sk_ / np.sqrt(aspect_ratio)
+                        w = sk_ * np.sqrt(aspect_ratio)
+                        priors_bboxes.append([cx, cy, w, h])
+                    else:
+                        h = sk/np.sqrt(aspect_ratio)
+                        w = sk* np.sqrt(aspect_ratio)
+                        priors_bboxes.append([cx, cy, w, h])
+    # np.set_printoptions(threshold=np.inf)
+    # print(np.asarray(priors_bboxes))
     # Convert to Tensor
     priors_bboxes = torch.tensor(priors_bboxes)
     priors_bboxes = torch.clamp(priors_bboxes, 0.0, 1.0)
@@ -77,6 +90,9 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     assert a.shape[1] == 4
     assert b.dim() == 2
     assert b.shape[1] == 4
+    a = center2corner(a)
+    b = center2corner(b)
+
 
     # TODO: implement IoU of two bounding box
     iou = None
@@ -181,7 +197,7 @@ def loc2bbox(loc, priors, center_var=0.1, size_var=0.2):
     # real bounding box
     return torch.cat([
         center_var * l_center * p_size + p_center,      # b_{center}
-        p_size * torch.exp(size_var * l_size)           # b_{size}
+        p_size * torch. exp(size_var * l_size)           # b_{size}
     ], dim=-1)
 
 

@@ -30,7 +30,7 @@ class MobileNet(nn.Module):
             conv_dw(64, 128, 2),
             conv_dw(128, 128, 1),
             conv_dw(128, 256, 2),
-            conv_dw(256, 256, 1),
+            conv_dw(256, 256, 1),       #5
             conv_dw(256, 512, 2),
             conv_dw(512, 512, 1),
             conv_dw(512, 512, 1),
