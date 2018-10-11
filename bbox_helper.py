@@ -92,10 +92,14 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     assert b.shape[1] == 4
     a = center2corner(a)
     b = center2corner(b)
-
-
-    # TODO: implement IoU of two bounding box
-    iou = None
+    a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
+    b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
+    x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
+    x_min, y_min = np.minimum(a[:,2],b[:,2]), np.maximum(a[:,3], b[:,3])
+    temp_w = np.maximum((x_min-x_max),0)
+    temp_h = np.maximum((y_min-y_max),0)
+    a_and_b = temp_h*temp_w
+    iou = a_and_b/(a_area+b_area-a_and_b)
 
     # [DEBUG] Check if output is the desire shape
     assert iou.dim() == 1

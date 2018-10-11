@@ -54,6 +54,57 @@ class TestPiorBB(unittest.TestCase):
                           img_size * (ratio + step) / 100.))
         return sizes
 
+    def ssd_anchor_one_layer(self, img_shape,
+                             feat_shape,
+                             sizes,
+                             ratios,
+                             step,
+                             offset=0.5,
+                             dtype=np.float32):
+        """Computer SSD default anchor boxes for one feature layer.
+        Determine the relative position grid of the centers, and the relative
+        width and height.
+        Arguments:
+          feat_shape: Feature shape, used for computing relative position grids;
+          size: Absolute reference sizes;
+          ratios: Ratios to use on these features;
+          img_shape: Image shape, used for computing height, width relatively to the
+            former;
+          offset: Grid offset.
+        Return:
+          y, x, h, w: Relative x and y grids, and height and width.
+        """
+        # Compute the position grid: simple way.
+        y, x = np.mgrid[0:feat_shape[0], 0:feat_shape[1]]
+        y = (y.astype(dtype) + offset) / feat_shape[0]
+        x = (x.astype(dtype) + offset) / feat_shape[1]
+        # Weird SSD-Caffe computation using steps values...
+        # y, x = np.mgrid[0:feat_shape[0], 0:feat_shape[1]]
+        # y = (y.astype(dtype) + offset) * step / img_shape[0]
+        # x = (x.astype(dtype) + offset) * step / img_shape[1]
+
+        # Expand dims to support easy broadcasting.
+        y = np.expand_dims(y, axis=-1)  # [size, size, 1]
+        x = np.expand_dims(x, axis=-1)  # [size, size, 1]
+
+        # Compute relative height and width.
+        # Tries to follow the original implementation of SSD for the order.
+        num_anchors = len(sizes) + len(ratios)
+        h = np.zeros((num_anchors,), dtype=dtype)  # [n_anchors]
+        w = np.zeros((num_anchors,), dtype=dtype)  # [n_anchors]
+        # Add first anchor boxes with ratio=1.
+        h[0] = sizes[0] / img_shape[0]
+        w[0] = sizes[0] / img_shape[1]
+        di = 1
+        if len(sizes) > 1:
+            h[1] = np.math.sqrt(sizes[0] * sizes[1]) / img_shape[0]
+            w[1] = np.math.sqrt(sizes[0] * sizes[1]) / img_shape[1]
+            di += 1
+        for i, r in enumerate(ratios):
+            h[i + di] = sizes[0] / img_shape[0] / np.math.sqrt(r)
+            w[i + di] = sizes[0] / img_shape[1] * np.math.sqrt(r)
+        return y, x, h, w
+
     def test_priorbb(self):
         prior_layer_cfg = [
             # Example:
@@ -72,12 +123,15 @@ class TestPiorBB(unittest.TestCase):
         ]
         pp=generate_prior_bboxes(prior_layer_cfg)
 
-        print(pp[0:1])
-        print(iou(pp[0:1], pp[1:2]))
+        print(pp[0:1], pp[39:40])
+        print(iou(pp[0:39], pp[0:39]))
         np.set_printoptions(threshold=np.inf)
         size_bounds=[0.2,0.9]
         img_shape = [300,300]
-        list = self.ssd_size_bounds_to_values(size_bounds,6,img_shape)
-        print(list)
+        # list = self.ssd_size_bounds_to_values(size_bounds,6,img_shape)
+        # print(list)
+        #prior_bbox = self.ssd_anchor_one_layer((300,300),(38,38),(30,60), [2, .5, 3, 1. / 3], 3)
+        #print(prior_bbox)
+
         self.assertEqual('foo'.upper(), 'FOO')
 
