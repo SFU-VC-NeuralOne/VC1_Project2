@@ -59,7 +59,7 @@ def generate_prior_bboxes(prior_layer_cfg):
     # np.set_printoptions(threshold=np.inf)
     # print(np.asarray(priors_bboxes))
     # Convert to Tensor
-    priors_bboxes = torch.tensor(priors_bboxes)
+    priors_bboxes = torch.tensor(priors_bboxes,dtype=torch.float64)
     priors_bboxes = torch.clamp(priors_bboxes, 0.0, 1.0)
     num_priors = priors_bboxes.shape[0]
 
@@ -85,6 +85,8 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     assert b.shape[1] == 4
     a = center2corner(a)
     b = center2corner(b)
+
+    print('a alone',a)
     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
     print(a_area.shape)
@@ -94,7 +96,9 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     temp_h = np.maximum((y_min-y_max),0)
     a_and_b = temp_h*temp_w
 
-    print(a_and_b.shape)
+    print(a_and_b)
+    print(a_area)
+    print(b_area)
 
     print(a_and_b.dtype, a_area.dtype, b_area.dtype)
 
@@ -265,5 +269,5 @@ def corner2center(corner):
     :param center: bounding box in center form (cx, cy, w, h)
     :return: bounding box in corner form (x,y) (x+w, y+h)
     """
-    return torch.cat([corner[..., :2] - corner[..., 2:]/2,
-                      corner[..., :2] + corner[..., 2:]/2], dim=-1)
+    return torch.cat([corner[..., :2]/2 + corner[..., 2:]/2,
+                      corner[..., 2:] - corner[..., :2]],dim=-1)

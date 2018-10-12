@@ -134,8 +134,8 @@ class TestPiorBB(unittest.TestCase):
         pp=generate_prior_bboxes(prior_layer_cfg)
 
         print(pp[0:1], pp[39:40])
-        # temp = iou(pp[0:5], pp[38:39])
-        # print('iou',temp)
+        temp = iou(pp[0:6], pp[0:1])
+        print('iou',temp)
         gt_label = torch.tensor([1])
         # print(gt_label.dim[0])
         print('matching', match_priors(pp[0:38],pp[38:39],gt_label,0.5))
@@ -198,7 +198,7 @@ class TestBbox2loc(unittest.TestCase):
 
 class TestDataLoad(unittest.TestCase):
     def test_dataLoad(self):
-        #torch.set_default_tensor_type('torch.cuda.FloatTensor')
+       # torch.set_default_tensor_type('torch.cuda.FloatTensor')
         test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
