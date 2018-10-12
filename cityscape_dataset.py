@@ -1,16 +1,29 @@
 import numpy as np
 import torch.nn
+from PIL import Image
 from torch.utils.data import Dataset
-from bbox_helper import generate_prior_bboxes, match_priors
+from bbox_helper import generate_prior_bboxes, match_priors,corner2center
 
 
 class CityScapeDataset(Dataset):
 
     def __init__(self, dataset_list):
         self.dataset_list = dataset_list
-
-        # TODO: implement prior bounding box
-        self.prior_bboxes = generate_prior_bboxes(prior_layer_cfg='Todo, use your own setting, please refer bbox_helper.py for an example')
+        prior_layer_cfg = [
+            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
+        ]
+        self.prior_bboxes = generate_prior_bboxes(prior_layer_cfg)
 
         # Pre-process parameters:
         #  Normalize: (I-self.mean)/self.std
@@ -32,19 +45,28 @@ class CityScapeDataset(Dataset):
 
         # TODO: implement data loading
         # 1. Load image as well as the bounding box with its label
+        item = self.dataset_list[idx]
+        file_path = item['file_path']
+        ground_truth = item['label']
+        sample_labels = ground_truth[0]
+        sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
+        sample_img = Image.open(file_path)
         # 2. Normalize the image with self.mean and self.std
+        img_array = np.asarray(sample_img)
+        img_array = (img_array-self.mean)/self.std
+
         # 3. Convert the bounding box from corner form (left-top, right-bottom): [(x,y), (x+w, y+h)] to
         #    center form: [(center_x, center_y, w, h)]
+        sample_bboxes = sample_bboxes/[2048, 1024, 2048, 1024]
+
         # 4. Normalize the bounding box position value from 0 to 1
-        sample_labels = None
-        sample_bboxes = None
-        sample_img = None
+        sample_bboxes = corner2center(torch.from_numpy(sample_bboxes))
 
         # 4. Do the augmentation if needed. e.g. random clip the bounding box or flip the bounding box
 
         # 5. Do the matching prior and generate ground-truth labels as well as the boxes
-        bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes, sample_bboxes, sample_labels, iou_threshold=0.5)
-
+        bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes, sample_bboxes, torch.tensor(sample_labels), iou_threshold=0.5)
+        img_tensor = torch.from_numpy(img_array)
         # [DEBUG] check the output.
         assert isinstance(bbox_label_tensor, torch.Tensor)
         assert isinstance(bbox_tensor, torch.Tensor)
@@ -52,5 +74,5 @@ class CityScapeDataset(Dataset):
         assert bbox_tensor.shape[1] == 4
         assert bbox_label_tensor.dim() == 1
         assert bbox_label_tensor.shape[0] == bbox_tensor.shape[0]
-
-        return bbox_tensor, bbox_label_tensor
+        print('after matching',bbox_label_tensor.shape)
+        return img_tensor, bbox_tensor, bbox_label_tensor

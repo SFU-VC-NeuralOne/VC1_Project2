@@ -24,15 +24,7 @@ def generate_prior_bboxes(prior_layer_cfg):
     :param prior_layer_cfg: configuration for each feature layer, see the 'example_prior_layer_cfg' in the following.
     :return prior bounding boxes with form of (cx, cy, w, h), where the value range are from 0 to 1, dim (1, num_priors, 4)
     """
-    prior_layer_cfg = [
-        # Example:
-        {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
-        {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
-        {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
-        {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
-        {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
-        {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264), 'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
-    ]
+
     sk_list = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88, 1.05]
 
     priors_bboxes = []
@@ -88,18 +80,28 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     # [DEBUG] Check if input is the desire shape
     assert a.dim() == 2
     assert a.shape[1] == 4
-    print ('b dim',b, b.dim())
+    #print ('b dim',b, b.dim())
     assert b.dim() == 2
     assert b.shape[1] == 4
     a = center2corner(a)
     b = center2corner(b)
     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
+    print(a_area.shape)
     x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
     x_min, y_min = np.minimum(a[:,2],b[:,2]), np.maximum(a[:,3], b[:,3])
     temp_w = np.maximum((x_min-x_max),0)
     temp_h = np.maximum((y_min-y_max),0)
     a_and_b = temp_h*temp_w
+
+    print(a_and_b.shape)
+
+    print(a_and_b.dtype, a_area.dtype, b_area.dtype)
+
+    denom = a_and_b+b_area
+
+    print(denom.dtype)
+
     iou = a_and_b/(a_area+b_area-a_and_b)
 
 
@@ -142,7 +144,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
         else:
             ground_truth = torch.tensor(gt_bboxes[matched_labels[i]-1])
             #gt_bboxes[i]=gt_bboxes[i] -1
-            prior_bboxes[i] = bbox2loc(ground_truth, prior_bboxes[i])
+            prior_bboxes[i] = bbox2loc(ground_truth.float(), prior_bboxes[i].float())
 
 
     matched_boxes = prior_bboxes

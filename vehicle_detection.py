@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 
 def load_data(picture_path, label_path):
     data_list = []
+    vehicle_list = ['car', 'truck', 'bus', 'train','tram', 'motorcycle', 'bicycle', 'caravan', 'trailer']
+    human_list = ['person','rider', 'person group', 'rider group']
     for root, dirs, files in os.walk(label_path):
         for name in files:
             if name.endswith((".json")):
@@ -22,20 +24,26 @@ def load_data(picture_path, label_path):
                 #print(img_file_path)
                 with open(json_file_path, 'r') as f:
                     frame_info = json.load(f)
-                    classes = []
+                    label = []
+                    bbox = []
                     for object in frame_info['objects']:
-                        if (object['label'] == 'car'):
+                        if (object['label'] in vehicle_list):
                             polygons = np.asarray(object['polygon'], dtype=np.float32)
                             left_top = np.min(polygons, axis=0)
                             right_bottom = np.max(polygons, axis=0)
-                            #print(left_top, right_bottom)
-                            classes.append({'class': 'car', 'position':[left_top, right_bottom]})
-                        if (object['label'] == 'person'):
+                            label.append(1)     #1 is vehicle
+                            bbox.append(np.asarray([left_top, right_bottom]).flatten())
+                            # print('left',left_top)
+                            # print('right', left_top)
+                        if (object['label'] in human_list):
                             polygons = np.asarray(object['polygon'], dtype=np.float32)
                             left_top = np.min(polygons, axis=0)
                             right_bottom = np.max(polygons, axis=0)
-                            classes.append({'class': 'person', 'position':[left_top, right_bottom]})
-                    data_list.append({'file_path':img_file_path, 'label':classes})
+                            label.append(2)
+                            bbox.append(np.asarray([left_top, right_bottom]).flatten())
+                            #classes.append({'class': 'human', 'position':[left_top, right_bottom]})
+                    if(len(label)!=0 & len(bbox)):
+                        data_list.append({'file_path':img_file_path, 'label':[label,bbox]})
     return data_list
 
 def train(net, train_data_loader, validation_data_loader):

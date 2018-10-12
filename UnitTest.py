@@ -7,24 +7,34 @@ import matplotlib.pyplot as plt
 import torch
 import mobilenet
 from util import module_util
-from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc
+from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc,center2corner,corner2center
+from cityscape_dataset import CityScapeDataset
 
 
 
 class TestLoadingData(unittest.TestCase):
     def test_Loading(self):
         test_list = load_data('../cityscapes_samples','../cityscapes_samples_labels')
-        print(test_list[0])
-        print(test_list[0]['file_path'])
-        print(test_list[0]['label'][0]['class'])
-        print(test_list[0]['label'][0]['position'][0])
-        print(test_list[0]['label'][0]['position'][1])
-        print(test_list[0]['label'][1]['class'])
-        print(test_list[0]['label'][1]['position'][0])
-        print(test_list[0]['label'][1]['position'][1])
-        img = Image.open(test_list[0]['file_path'])
-        plt.imshow(img)
-        plt.show()
+        item = test_list[1]
+        ground_truth = item['label']
+        labels=ground_truth[0]
+        bbox = np.asarray(ground_truth[1],dtype=np.float32)
+        bbox=bbox/ [2048, 1024, 2048, 1024]
+        # for i in range (0, len(ground_truth)):
+        #     labels.append()
+        # labels = ground_truth['class']
+        print(labels)
+        print(bbox)
+        # print(test_list[0]['file_path'])
+        # print(test_list[0]['label'][0]['class'])
+        # print(test_list[0]['label'][0]['position'][0])
+        # print(test_list[0]['label'][0]['position'][1])
+        # print(test_list[0]['label'][1]['class'])
+        # print(test_list[0]['label'][1]['position'][0])
+        # print(test_list[0]['label'][1]['position'][1])
+        # img = Image.open(test_list[0]['file_path'])
+        # plt.imshow(img)
+        # plt.show()
         self.assertEqual('foo'.upper(), 'FOO')
 
 class TestPiorBB(unittest.TestCase):
@@ -183,4 +193,43 @@ class TestBbox2loc(unittest.TestCase):
 
         #print(pp[0:1], pp[39:40])
         print(bbox2loc(pp[0:5],pp[0:1]))
+
         self.assertEqual('foo'.upper(), 'FOO')
+
+class TestDataLoad(unittest.TestCase):
+    def test_dataLoad(self):
+        #torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
+        test_dataset = CityScapeDataset(test_list)
+        test_data_loader = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=10,
+                                                        shuffle=True,
+                                                        num_workers=0)
+        idx, (image, bbox, label) = next(enumerate(test_data_loader))
+        print('bbox',bbox)
+        print('label',label.shape)
+
+class TestCorner2(unittest.TestCase):
+    def test_corner2(self):
+        prior_layer_cfg = [
+            # Example:
+            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+        ]
+        pp = generate_prior_bboxes(prior_layer_cfg)
+        print('original',pp[0])
+        test = center2corner(pp[0])
+        print('corner',test)
+        test = corner2center(test)
+        print('center',test)
+
