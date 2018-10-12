@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import torch
 import mobilenet
 from util import module_util
-from bbox_helper import generate_prior_bboxes
-from bbox_helper import iou
+from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc
+
 
 
 class TestLoadingData(unittest.TestCase):
@@ -124,7 +124,11 @@ class TestPiorBB(unittest.TestCase):
         pp=generate_prior_bboxes(prior_layer_cfg)
 
         print(pp[0:1], pp[39:40])
-        print(iou(pp[0:39], pp[0:39]))
+        # temp = iou(pp[0:5], pp[38:39])
+        # print('iou',temp)
+        gt_label = torch.tensor([1])
+        # print(gt_label.dim[0])
+        print('matching', match_priors(pp[0:38],pp[38:39],gt_label,0.5))
         np.set_printoptions(threshold=np.inf)
         size_bounds=[0.2,0.9]
         img_shape = [300,300]
@@ -135,3 +139,48 @@ class TestPiorBB(unittest.TestCase):
 
         self.assertEqual('foo'.upper(), 'FOO')
 
+class TestMin(unittest.TestCase):
+    def test_min(self):
+        a = torch.randn(4, 4)
+        print(a)
+        print(torch.argmin(a, dim=0)+1)
+        b = torch.tensor([0, 1, 2, 3])
+        print('b:',b)
+        b=torch.reshape(b, (1, 4))
+        print(b)
+        for i in range(0,1):
+            print('i',i)
+        x = torch.randn(2, 3)
+        torch.cat((x, x, x), 0)
+        self.assertEqual('foo'.upper(), 'FOO')
+
+class TestNN(unittest.TestCase):
+    def test_nn(self):
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
+        model = mobilenet.MobileNet()
+        module_util.summary_layers(model,(3,300,300))
+        self.assertEqual('foo'.upper(), 'FOO')
+
+class TestBbox2loc(unittest.TestCase):
+    def test_bbox2loc(self):
+        prior_layer_cfg = [
+            # Example:
+            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+        ]
+        pp = generate_prior_bboxes(prior_layer_cfg)
+
+        #print(pp[0:1], pp[39:40])
+        print(bbox2loc(pp[0:5],pp[0:1]))
+        self.assertEqual('foo'.upper(), 'FOO')

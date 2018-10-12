@@ -88,6 +88,7 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     # [DEBUG] Check if input is the desire shape
     assert a.dim() == 2
     assert a.shape[1] == 4
+    print ('b dim',b, b.dim())
     assert b.dim() == 2
     assert b.shape[1] == 4
     a = center2corner(a)
@@ -101,10 +102,11 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     a_and_b = temp_h*temp_w
     iou = a_and_b/(a_area+b_area-a_and_b)
 
+
     # [DEBUG] Check if output is the desire shape
     assert iou.dim() == 1
     assert iou.shape[0] == a.shape[0]
-    return iou
+    return iou.view(1,a.shape[0])
 
 
 def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels: torch.Tensor, iou_threshold: float):
@@ -127,10 +129,24 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.dim() == 2
     assert prior_bboxes.shape[1] == 4
 
-    matched_boxes = None
-    matched_labels = None
+    iou_list = torch.tensor([])
+    for i in range(0, gt_bboxes.shape[0]):
+        iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
 
-    # TODO: implement prior matching
+    matched_labels = torch.argmax(iou_list,dim=0)+1
+
+    for i in range(0, iou_list.shape[1]):
+        if torch.min(iou_list[:,i] < iou_threshold):
+            matched_labels[i] = 0
+            prior_bboxes[i] = torch.tensor([0.,0.,0.,0.])
+        else:
+            ground_truth = torch.tensor(gt_bboxes[matched_labels[i]-1])
+            #gt_bboxes[i]=gt_bboxes[i] -1
+            prior_bboxes[i] = bbox2loc(ground_truth, prior_bboxes[i])
+
+
+    matched_boxes = prior_bboxes
+
 
     # [DEBUG] Check if output is the desire shape
     assert matched_boxes.dim() == 2
@@ -214,8 +230,8 @@ def bbox2loc(bbox, priors, center_var=0.1, size_var=0.2):
     :param size_var: scale variance of the bounding box size
     :return: loc: (cx, cy, h, w)
     """
-    assert priors.shape[0] == 1
-    assert priors.dim() == 3
+    # assert priors.shape[0] == 1
+    # assert priors.dim() == 3
 
     # prior bounding boxes
     p_center = priors[..., :2]
@@ -225,11 +241,11 @@ def bbox2loc(bbox, priors, center_var=0.1, size_var=0.2):
     b_center = bbox[..., :2]
     b_size = bbox[..., 2:]
 
-    return torch.cat([
+    temp = torch.cat([
         1 / center_var * ((b_center - p_center) / p_size),
         torch.log(b_size / p_size) / size_var
     ], dim=-1)
-
+    return temp
 
 def center2corner(center):
     """
