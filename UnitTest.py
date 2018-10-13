@@ -173,7 +173,7 @@ class TestNN(unittest.TestCase):
 
         # model = mobilenet.MobileNet()
         # module_util.summary_layers(model,(3,300,300))
-        model = ssd_net.SSD(2)
+        model = ssd_net.SSD(3)
         module_util.summary_layers(model, (3, 300, 300))
         self.assertEqual('foo'.upper(), 'FOO')
 
