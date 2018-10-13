@@ -57,8 +57,8 @@ class CityScapeDataset(Dataset):
 
         # 3. Convert the bounding box from corner form (left-top, right-bottom): [(x,y), (x+w, y+h)] to
         #    center form: [(center_x, center_y, w, h)]
-        #img_scale =
-        sample_bboxes = sample_bboxes/np.asarray([2048., 1024., 2048., 1024.],dtype=np.float32)
+        print([img_array.shape[1],img_array.shape[0],img_array.shape[1],img_array.shape[0]])
+        sample_bboxes = sample_bboxes/np.asarray([img_array.shape[1],img_array.shape[0],img_array.shape[1],img_array.shape[0]], dtype=np.float32)
 
         # 4. Normalize the bounding box position value from 0 to 1
         sample_bboxes = corner2center(torch.from_numpy(sample_bboxes))

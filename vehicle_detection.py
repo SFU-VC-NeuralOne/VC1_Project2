@@ -10,6 +10,15 @@ import torch
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 from bbox_loss import MultiboxLoss
+from ssd_net import SSD
+
+# cityscape_label_dir = '../cityscapes_samples_labels'
+# cityscape_img_dir ='../cityscapes_samples'
+
+cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+
+pth_path='/'
 
 def load_data(picture_path, label_path):
     data_list = []
@@ -22,7 +31,7 @@ def load_data(picture_path, label_path):
                 json_file_path = os.path.join(label_path, subfolder, name)
                 img_file_name_idx = name.find('_',20)
                 img_file_path = os.path.join(picture_path, subfolder, name[0:img_file_name_idx] + '_leftImg8bit.png')
-                #print(img_file_path)
+                print(img_file_path)
                 with open(json_file_path, 'r') as f:
                     frame_info = json.load(f)
                     label = []
@@ -110,6 +119,9 @@ def train(net, train_data_loader, validation_data_loader):
     train_losses = np.asarray(train_losses)
     valid_losses = np.asarray(valid_losses)
 
+    net_state = net.state_dict()  # serialize trained model
+    torch.save(net_state, os.path.join(pth_path, 'ssd_net.pth'))
+
     plt.plot(train_losses[:, 0],  # iteration
              train_losses[:, 1])  # loss value
     plt.plot(valid_losses[:, 0],  # iteration
@@ -117,20 +129,21 @@ def train(net, train_data_loader, validation_data_loader):
     plt.show()
 
 def main():
-    data_list = load_data('')
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    data_list = load_data(cityscape_img_dir, cityscape_label_dir)
     random.shuffle(data_list)
     num_total_items = len(data_list)
+    net = SSD
 
     # Training set, ratio: 80%
     num_train_sets = 0.8 * num_total_items
     train_set_list = data_list[: int(num_train_sets)]
     validation_set_list = data_list[int(num_train_sets):]
-    test_set_list = load_data('')
 
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=120,
+                                                    batch_size=64,
                                                     shuffle=True,
                                                     num_workers=4)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
@@ -138,10 +151,11 @@ def main():
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=32,
+                                                         batch_size=64,
                                                          shuffle=True,
                                                          num_workers=4)
     print('Total validation items:', len(validation_dataset))
+    train(net, train_data_loader, validation_data_loader)
 
 if __name__ == '__main__':
     main()
