@@ -24,7 +24,7 @@ class MobileNet(nn.Module):
                 nn.ReLU(inplace=True),
             )
 
-        self.conv_layers = nn.Sequential(
+        self.base_net = nn.Sequential(
             conv_bn(3, 32, 2),
             conv_dw(32, 64, 1),
             conv_dw(64, 128, 2),

@@ -43,7 +43,7 @@ class CityScapeDataset(Dataset):
         :return bbox_label: matched classification label, dim: (num_priors)
         """
 
-        # TODO: implement data loading
+
         # 1. Load image as well as the bounding box with its label
         item = self.dataset_list[idx]
         file_path = item['file_path']
@@ -57,13 +57,14 @@ class CityScapeDataset(Dataset):
 
         # 3. Convert the bounding box from corner form (left-top, right-bottom): [(x,y), (x+w, y+h)] to
         #    center form: [(center_x, center_y, w, h)]
-        sample_bboxes = sample_bboxes/[2048, 1024, 2048, 1024]
+        #img_scale =
+        sample_bboxes = sample_bboxes/np.asarray([2048., 1024., 2048., 1024.],dtype=np.float32)
 
         # 4. Normalize the bounding box position value from 0 to 1
         sample_bboxes = corner2center(torch.from_numpy(sample_bboxes))
 
         # 4. Do the augmentation if needed. e.g. random clip the bounding box or flip the bounding box
-
+        # TODO: data augmentation
         # 5. Do the matching prior and generate ground-truth labels as well as the boxes
         bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes, sample_bboxes, torch.tensor(sample_labels), iou_threshold=0.5)
         img_tensor = torch.from_numpy(img_array)
@@ -74,5 +75,5 @@ class CityScapeDataset(Dataset):
         assert bbox_tensor.shape[1] == 4
         assert bbox_label_tensor.dim() == 1
         assert bbox_label_tensor.shape[0] == bbox_tensor.shape[0]
-        print('after matching',bbox_label_tensor.shape)
+        # print('after matching',bbox_label_tensor.shape)
         return img_tensor, bbox_tensor, bbox_label_tensor

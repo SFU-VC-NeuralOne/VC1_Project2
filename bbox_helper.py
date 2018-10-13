@@ -59,7 +59,7 @@ def generate_prior_bboxes(prior_layer_cfg):
     # np.set_printoptions(threshold=np.inf)
     # print(np.asarray(priors_bboxes))
     # Convert to Tensor
-    priors_bboxes = torch.tensor(priors_bboxes,dtype=torch.float64)
+    priors_bboxes = torch.tensor(priors_bboxes)
     priors_bboxes = torch.clamp(priors_bboxes, 0.0, 1.0)
     num_priors = priors_bboxes.shape[0]
 
@@ -83,31 +83,24 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     #print ('b dim',b, b.dim())
     assert b.dim() == 2
     assert b.shape[1] == 4
+
     a = center2corner(a)
     b = center2corner(b)
 
-    print('a alone',a)
+    #print('a b',a.dtype, b.dtype)
     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
-    print(a_area.shape)
+
     x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
     x_min, y_min = np.minimum(a[:,2],b[:,2]), np.maximum(a[:,3], b[:,3])
     temp_w = np.maximum((x_min-x_max),0)
     temp_h = np.maximum((y_min-y_max),0)
     a_and_b = temp_h*temp_w
 
-    print(a_and_b)
-    print(a_area)
-    print(b_area)
-
-    print(a_and_b.dtype, a_area.dtype, b_area.dtype)
-
-    denom = a_and_b+b_area
-
-    print(denom.dtype)
+    # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
+    # print('a&b a b', a_and_b, a_area, b_area)
 
     iou = a_and_b/(a_area+b_area-a_and_b)
-
 
     # [DEBUG] Check if output is the desire shape
     assert iou.dim() == 1
@@ -135,6 +128,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.dim() == 2
     assert prior_bboxes.shape[1] == 4
 
+    # print('gt_bbox',gt_bboxes.dtype)
     iou_list = torch.tensor([])
     for i in range(0, gt_bboxes.shape[0]):
         iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)

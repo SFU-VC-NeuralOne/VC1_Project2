@@ -1,7 +1,10 @@
 import unittest
 
+import cv2
 import numpy as np
 from PIL import Image
+
+import ssd_net
 from vehicle_detection import load_data
 import matplotlib.pyplot as plt
 import torch
@@ -168,8 +171,10 @@ class TestNN(unittest.TestCase):
     def test_nn(self):
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
-        model = mobilenet.MobileNet()
-        module_util.summary_layers(model,(3,300,300))
+        # model = mobilenet.MobileNet()
+        # module_util.summary_layers(model,(3,300,300))
+        model = ssd_net.SSD(2)
+        module_util.summary_layers(model, (3, 300, 300))
         self.assertEqual('foo'.upper(), 'FOO')
 
 class TestBbox2loc(unittest.TestCase):
@@ -198,16 +203,28 @@ class TestBbox2loc(unittest.TestCase):
 
 class TestDataLoad(unittest.TestCase):
     def test_dataLoad(self):
-       # torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        #torch.set_default_tensor_type('torch.cuda.FloatTensor')
         test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
-                                                        batch_size=10,
+                                                        batch_size=1,
                                                         shuffle=True,
                                                         num_workers=0)
-        idx, (image, bbox, label) = next(enumerate(test_data_loader))
+        idx, (img, bbox, label) = next(enumerate(test_data_loader))
+
+        bbox=bbox[0].cpu().numpy()
+        print(np.where(bbox>0))
+
+        img = img[0].cpu().numpy()
+        img = (img*128+np.asarray((127, 127, 127)))/255
+        for i in range(0, bbox.shape[0]):
+            cv2.rectangle(img, (bbox[i,0], bbox[i,1]), (bbox[i,2], bbox[i,3]), (0, 255, 0), 3)
+        cv2.imshow("img", img)
+        #plt.imshow(img, cmap='brg')
+        cv2.waitKey(0)
         print('bbox',bbox)
-        print('label',label.shape)
+        print('label',label)
+
 
 class TestCorner2(unittest.TestCase):
     def test_corner2(self):
@@ -232,4 +249,21 @@ class TestCorner2(unittest.TestCase):
         print('corner',test)
         test = corner2center(test)
         print('center',test)
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        print('Pytorch CUDA Enabled?:', torch.cuda.is_available())
+        b = 0.5 * torch.eye(3)
+        b_gpu = b.cuda()
+        print(b_gpu)
 
+class TestLoadingNN(unittest.TestCase):
+    def test_loadNN(self):
+        temp_state = torch.load('pretrained/mobienetv2.pth')
+        self.base_net = mobilenet.MobileNet(2)
+
+        cur_dict = self.base_net.state_dict()
+        input_state = {k: v for k, v in temp_state.items() if
+                       k in cur_dict and v.size() == cur_dict[k].size()}
+        cur_dict.update(input_state)
+        self.base_net.load_state_dict(cur_dict)
+
+        print(input_state.keys())

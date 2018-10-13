@@ -9,10 +9,11 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
+from bbox_loss import MultiboxLoss
 
 def load_data(picture_path, label_path):
     data_list = []
-    vehicle_list = ['car', 'truck', 'bus', 'train','tram', 'motorcycle', 'bicycle', 'caravan', 'trailer']
+    vehicle_list = ['car', 'car group','truck', 'truck group','bus','bus group', 'train','train group','tram', 'motorcycle', 'bicycle', 'caravan', 'trailer']
     human_list = ['person','rider', 'person group', 'rider group']
     for root, dirs, files in os.walk(label_path):
         for name in files:
@@ -42,13 +43,13 @@ def load_data(picture_path, label_path):
                             label.append(2)
                             bbox.append(np.asarray([left_top, right_bottom]).flatten())
                             #classes.append({'class': 'human', 'position':[left_top, right_bottom]})
-                    if(len(label)!=0 & len(bbox)):
+                    if(len(label)!=0):
                         data_list.append({'file_path':img_file_path, 'label':[label,bbox]})
     return data_list
 
 def train(net, train_data_loader, validation_data_loader):
     net.cuda()
-    criterion = torch.nn.MSELoss()
+    criterion = MultiboxLoss()
     for params in net.features.parameters():
         params.requires_grad = False
 
@@ -61,21 +62,22 @@ def train(net, train_data_loader, validation_data_loader):
     itr = 0
 
     for epoch_idx in range(0, max_epochs):
-        for train_batch_idx, (train_input, train_label) in enumerate(train_data_loader):
+        for train_batch_idx, (train_input, train_bbox, train_label) in enumerate(train_data_loader):
             itr += 1
             net.train()
             optimizer.zero_grad()
 
             # Forward
             train_input = Variable(train_input.cuda())
-            train_out = net.forward(train_input)
+            train_cof, train_loc = net.forward(train_input)
 
             # compute loss
             train_label = Variable(train_label.cuda())
-            loss = criterion(train_out, train_label)
+            loss_cof, loss_loc = criterion(train_cof, train_loc, train_label, train_bbox)
+            loss = loss_cof + loss_cof
             loss.backward()
             optimizer.step()
-            train_losses.append((itr, loss.item()))
+            train_losses.append((itr, loss))
 
             # if train_batch_idx % 50 == 0:
             print('Epoch: %d Itr: %d Loss: %f' % (epoch_idx, itr, loss.item()))
@@ -86,13 +88,14 @@ def train(net, train_data_loader, validation_data_loader):
                 valid_loss_set = []
                 valid_itr = 0
 
-                for valid_batch_idx, (valid_input, valid_label) in enumerate(validation_data_loader):
+                for valid_batch_idx, (valid_input, valid_bbox, valid_label) in enumerate(validation_data_loader):
                     valid_input = Variable(valid_input.cuda())  # use Variable(*) to allow gradient flow
                     valid_out = net.forward(valid_input)  # forward once
 
                     # compute loss
                     valid_label = Variable(valid_label.cuda())
-                    valid_loss = criterion(valid_out, valid_label)
+                    loss_cof, loss_loc = criterion(valid_out, valid_label)
+                    valid_loss = loss_cof+loss_loc
                     valid_loss_set.append(valid_loss.item())
 
                     valid_itr += 1
