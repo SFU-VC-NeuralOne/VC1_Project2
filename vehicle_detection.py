@@ -12,11 +12,14 @@ import matplotlib.pyplot as plt
 from bbox_loss import MultiboxLoss
 from ssd_net import SSD
 
-# cityscape_label_dir = '../cityscapes_samples_labels'
-# cityscape_img_dir ='../cityscapes_samples'
+cityscape_label_dir = '../cityscapes_samples_labels'
+cityscape_img_dir ='../cityscapes_samples'
 
-cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
-cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+# cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
+# cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
+
+# cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+# cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
 
 pth_path='/'
 
@@ -58,8 +61,8 @@ def load_data(picture_path, label_path):
 
 def train(net, train_data_loader, validation_data_loader):
     net.cuda()
-    criterion = MultiboxLoss()
-    for params in net.features.parameters():
+    criterion = MultiboxLoss([0.1,0.2])
+    for params in net.base_net.parameters():
         params.requires_grad = False
 
     optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
@@ -129,11 +132,12 @@ def train(net, train_data_loader, validation_data_loader):
     plt.show()
 
 def main():
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    #torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    torch.multiprocessing.set_start_method('spawn')
     data_list = load_data(cityscape_img_dir, cityscape_label_dir)
     random.shuffle(data_list)
     num_total_items = len(data_list)
-    net = SSD
+    net = SSD(3)
 
     # Training set, ratio: 80%
     num_train_sets = 0.8 * num_total_items
@@ -143,17 +147,17 @@ def main():
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=64,
+                                                    batch_size=8,
                                                     shuffle=True,
-                                                    num_workers=4)
+                                                    num_workers=0)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
           len(train_data_loader))
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=64,
+                                                         batch_size=8,
                                                          shuffle=True,
-                                                         num_workers=4)
+                                                         num_workers=0)
     print('Total validation items:', len(validation_dataset))
     train(net, train_data_loader, validation_data_loader)
 

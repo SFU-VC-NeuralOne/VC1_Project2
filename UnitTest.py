@@ -203,7 +203,7 @@ class TestBbox2loc(unittest.TestCase):
 
 class TestDataLoad(unittest.TestCase):
     def test_dataLoad(self):
-        #torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
         test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
@@ -219,9 +219,11 @@ class TestDataLoad(unittest.TestCase):
         img = (img*128+np.asarray((127, 127, 127)))/255
         # for i in range(0, bbox.shape[0]):
         #     cv2.rectangle(img, (bbox[i,0], bbox[i,1]), (bbox[i,2], bbox[i,3]), (0, 255, 0), 3)
-        cv2.imshow("img", img)
-        # plt.imshow(img, cmap='brg')
-        cv2.waitKey(0)
+        print(img.shape)
+        #cv2.imshow("img", img)
+        plt.imshow(img, cmap='brg')
+        plt.show()
+        #cv2.waitKey(0)
         print('bbox',bbox)
         print('label',label)
 

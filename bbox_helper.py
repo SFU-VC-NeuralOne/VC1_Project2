@@ -95,7 +95,15 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     x_min, y_min = np.minimum(a[:,2],b[:,2]), np.maximum(a[:,3], b[:,3])
     temp_w = np.maximum((x_min-x_max),0)
     temp_h = np.maximum((y_min-y_max),0)
-    a_and_b = temp_h*temp_w
+
+    # x_max, y_max = torch.max(a[:,0],b[:,0]), torch.max(a[:,1], b[:,1])
+    # x_min, y_min = torch.min(a[:,2],b[:,2]), torch.min(a[:,3], b[:,3])
+    # print('xmax, ymax, xmin, ymin', x_max, y_max, x_min, y_min)
+    # temp_w = torch.max((x_min-x_max),0)
+    # temp_h = torch.max((y_min-y_max),0)
+    # print('w,h',temp_w, temp_h)
+    temp = temp_h*temp_w
+    a_and_b = torch.Tensor(temp)
 
     # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
     # print('a&b a b', a_and_b, a_area, b_area)

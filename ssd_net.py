@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,7 +22,7 @@ class SSD(nn.Module):
         self.additional_feat_extractor = nn.ModuleList([
             # Conv8_2
             nn.Sequential(
-                nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
+                nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1),
                 nn.ReLU(),
                 nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1),
                 nn.ReLU()
@@ -37,14 +38,14 @@ class SSD(nn.Module):
             nn.Sequential(
                 nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
                 nn.ReLU(),
-                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1),
                 nn.ReLU()
             ),
 
             nn.Sequential(
                 nn.Conv2d(in_channels=256, out_channels=128, kernel_size=1),
                 nn.ReLU(),
-                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1),
                 nn.ReLU()
             )
         ])
@@ -131,6 +132,7 @@ class SSD(nn.Module):
         confidence, loc = self.feature_to_bbbox(self.loc_regressor[0], self.classifier[0], y)
         confidence_list.append(confidence)
         loc_list.append(loc)
+        print('cof, loc size', confidence.shape, loc.shape)
 
         # Todo: implement run the backbone network from [11 to 13] and compute the corresponding bbox loc and confidence
         y = module_util.forward_from(self.base_net.base_net, self.base_output_layer_indices[0], self.base_output_layer_indices[1] + 1, y)
@@ -138,21 +140,24 @@ class SSD(nn.Module):
         confidence, loc = self.feature_to_bbbox(self.loc_regressor[1], self.classifier[1], y)
         confidence_list.append(confidence)
         loc_list.append(loc)
+        print('cof, loc size', confidence.shape, loc.shape)
 
         #conv to 12
-        y = module_util.forward_from(self.base_net.base_net, self.base_output_layer_indices[1], self.base_output_layer_indices[2]+1, y)
+        #y = module_util.forward_from(self.base_net.base_net, self.base_output_layer_indices[1], self.base_output_layer_indices[2]+1, y)
         # Todo: forward the 'y' to additional layers for extracting coarse features
         for idx in range (0, len(self.additional_feat_extractor)) :
             print('current idx', idx)
             print('y', y.shape)
-            y = module_util.forward_from(self.additional_feat_extractor[idx], 0, 5, y)
+            y = module_util.forward_from(self.additional_feat_extractor[idx], 0, 4, y)
             confidence, loc = self.feature_to_bbbox(self.loc_regressor[idx+2], self.classifier[idx+2], y)
             confidence_list.append(confidence)
             loc_list.append(loc)
+            print('cof, loc size', confidence.shape, loc.shape)
 
 
         confidences = torch.cat(confidence_list, 1)
         locations = torch.cat(loc_list, 1)
+        #print('cof, loc size after cat',  np.asarray(confidences).shape, np.asarray(locations).shape)
 
         # [Debug] check the output
         assert confidences.dim() == 3  # should be (N, num_priors, num_classes)

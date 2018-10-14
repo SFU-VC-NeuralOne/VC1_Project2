@@ -55,21 +55,23 @@ class CityScapeDataset(Dataset):
         img = sample_img.resize((300, 300))
         img_array = np.asarray(img)
         img_array = (img_array-self.mean)/self.std
+        h, w, c = img_array.shape[0], img_array.shape[1], img_array.shape[2]
 
         # 3. Convert the bounding box from corner form (left-top, right-bottom): [(x,y), (x+w, y+h)] to
         #    center form: [(center_x, center_y, w, h)]
         print([sample_img.size[0],sample_img.size[1],sample_img.size[0],sample_img.size[1]])
-        sample_bboxes = sample_bboxes/np.asarray([sample_img.size[0],sample_img.size[1],sample_img.size[0],sample_img.size[1]], dtype=np.float32)
+        sample_bboxes = torch.Tensor(sample_bboxes)/torch.Tensor([sample_img.size[0],sample_img.size[1],sample_img.size[0],sample_img.size[1]])
 
         # 4. Normalize the bounding box position value from 0 to 1
-        sample_bboxes = corner2center(torch.from_numpy(sample_bboxes))
+        sample_bboxes = corner2center(sample_bboxes)
 
         # 4. Do the augmentation if needed. e.g. random clip the bounding box or flip the bounding box
         # TODO: data augmentation
         # 5. Do the matching prior and generate ground-truth labels as well as the boxes
         bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes, sample_bboxes, torch.tensor(sample_labels), iou_threshold=0.5)
-        img_tensor = torch.from_numpy(img_array)
-        print(img_tensor.shape)
+        img_tensor = torch.Tensor(img_array)
+        img_tensor = img_tensor.view(c, h, w)
+        #print(img_tensor.shape)
         # [DEBUG] check the output.
         assert isinstance(bbox_label_tensor, torch.Tensor)
         assert isinstance(bbox_tensor, torch.Tensor)
@@ -77,5 +79,5 @@ class CityScapeDataset(Dataset):
         assert bbox_tensor.shape[1] == 4
         assert bbox_label_tensor.dim() == 1
         assert bbox_label_tensor.shape[0] == bbox_tensor.shape[0]
-        # print('after matching',bbox_label_tensor.shape)
+        print('after matching bbx, bbx_label',bbox_tensor.shape,bbox_label_tensor.shape)
         return img_tensor, bbox_tensor, bbox_label_tensor
