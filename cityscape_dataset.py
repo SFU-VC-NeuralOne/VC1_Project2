@@ -52,13 +52,14 @@ class CityScapeDataset(Dataset):
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
         # 2. Normalize the image with self.mean and self.std
-        img_array = np.asarray(sample_img)
+        img = sample_img.resize((300, 300))
+        img_array = np.asarray(img)
         img_array = (img_array-self.mean)/self.std
 
         # 3. Convert the bounding box from corner form (left-top, right-bottom): [(x,y), (x+w, y+h)] to
         #    center form: [(center_x, center_y, w, h)]
-        print([img_array.shape[1],img_array.shape[0],img_array.shape[1],img_array.shape[0]])
-        sample_bboxes = sample_bboxes/np.asarray([img_array.shape[1],img_array.shape[0],img_array.shape[1],img_array.shape[0]], dtype=np.float32)
+        print([sample_img.size[0],sample_img.size[1],sample_img.size[0],sample_img.size[1]])
+        sample_bboxes = sample_bboxes/np.asarray([sample_img.size[0],sample_img.size[1],sample_img.size[0],sample_img.size[1]], dtype=np.float32)
 
         # 4. Normalize the bounding box position value from 0 to 1
         sample_bboxes = corner2center(torch.from_numpy(sample_bboxes))
@@ -68,6 +69,7 @@ class CityScapeDataset(Dataset):
         # 5. Do the matching prior and generate ground-truth labels as well as the boxes
         bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes, sample_bboxes, torch.tensor(sample_labels), iou_threshold=0.5)
         img_tensor = torch.from_numpy(img_array)
+        print(img_tensor.shape)
         # [DEBUG] check the output.
         assert isinstance(bbox_label_tensor, torch.Tensor)
         assert isinstance(bbox_tensor, torch.Tensor)

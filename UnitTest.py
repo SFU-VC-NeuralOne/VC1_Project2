@@ -217,10 +217,10 @@ class TestDataLoad(unittest.TestCase):
 
         img = img[0].cpu().numpy()
         img = (img*128+np.asarray((127, 127, 127)))/255
-        for i in range(0, bbox.shape[0]):
-            cv2.rectangle(img, (bbox[i,0], bbox[i,1]), (bbox[i,2], bbox[i,3]), (0, 255, 0), 3)
+        # for i in range(0, bbox.shape[0]):
+        #     cv2.rectangle(img, (bbox[i,0], bbox[i,1]), (bbox[i,2], bbox[i,3]), (0, 255, 0), 3)
         cv2.imshow("img", img)
-        #plt.imshow(img, cmap='brg')
+        # plt.imshow(img, cmap='brg')
         cv2.waitKey(0)
         print('bbox',bbox)
         print('label',label)
