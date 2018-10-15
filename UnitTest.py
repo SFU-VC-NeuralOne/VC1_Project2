@@ -1,4 +1,5 @@
 import unittest
+import time
 
 import cv2
 import numpy as np
@@ -317,6 +318,7 @@ class TestLoadingNN(unittest.TestCase):
 
 class TestMatching(unittest.TestCase):
     def test_Match(self):
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
         pp=np.asarray([[0,0,2,2],[1,0,3,2  ],[0,0,1,3],[3,3,4,4]],dtype=np.float32)
         pp = corner2center(torch.Tensor(pp))
         gt = torch.Tensor([[1,1,1,1]])
@@ -331,3 +333,6 @@ class TestMatching(unittest.TestCase):
         for i in range(0, test_iou.shape[1]):
             if torch.max(test_iou[:, i]) < 0.5:
                 print(i)
+        timestamp = time.time()
+        filename = 'ssd_net' + str(timestamp) + '.pth'
+        print(filename)

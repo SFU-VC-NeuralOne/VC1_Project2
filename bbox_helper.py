@@ -78,6 +78,7 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     :return: iou value: dim: (n_item)
     """
     # [DEBUG] Check if input is the desire shape
+
     assert a.dim() == 2
     assert a.shape[1] == 4
     #print ('b dim',b, b.dim())
@@ -102,13 +103,12 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     # temp_w = torch.max((x_min-x_max),0)
     # temp_h = torch.max((y_min-y_max),0)
     # print('w,h',temp_w, temp_h)
-    temp = temp_h*temp_w
-    a_and_b = torch.Tensor(temp.cuda())
+    a_and_b = temp_h.cuda()*temp_w.cuda()
 
     # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
     # print('a&b a b', a_and_b, a_area, b_area)
 
-    iou = a_and_b/(a_area+b_area-a_and_b)
+    iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
 
     # [DEBUG] Check if output is the desire shape
     assert iou.dim() == 1
@@ -137,7 +137,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.shape[1] == 4
 
     # print('gt_bbox',gt_bboxes.dtype)
-    iou_list = torch.tensor([])
+    iou_list = torch.tensor([]).cuda()
     for i in range(0, gt_bboxes.shape[0]):
         iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
 
@@ -146,7 +146,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     # temp = matched_labels[np.where(matched_labels ==8 )]
     # temp = temp[np.where(temp < 4)]
     # print('matched_labels', temp)
-    #print('iou list and prior bbox',iou_list.shape, prior_bboxes.shape)
+    # print('iou list and prior bbox',iou_list.shape, prior_bboxes.shape)
     gt_idx = []
     #make sure every grouth truth has one bbox
     for i in range (0, gt_bboxes.shape[0]):
@@ -266,8 +266,8 @@ def bbox2loc(bbox, priors, center_var=0.1, size_var=0.2):
     b_size = bbox[..., 2:]
 
     temp = torch.cat([
-        1 / center_var * ((b_center - p_center) / p_size),
-        torch.log(b_size / p_size) / size_var
+        1 / center_var * ((b_center.cuda() - p_center.cuda()) / p_size.cuda()),
+        torch.log(b_size.cuda() / p_size.cuda()) / size_var
     ], dim=-1)
     return temp
 

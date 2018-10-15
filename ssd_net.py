@@ -105,7 +105,7 @@ class SSD(nn.Module):
         conf = conf.permute(0, 2, 3, 1).contiguous()
         num_batch = conf.shape[0]
         c_channels = int(conf.shape[1]*conf.shape[2]*conf.shape[3] / self.num_classes)
-        print('conf shape',conf.shape)
+        #print('conf shape',conf.shape)
 
         conf = conf.view(num_batch, c_channels, self.num_classes)
 
@@ -113,9 +113,9 @@ class SSD(nn.Module):
         # Bounding Box loc and size post-processing
         # 1: (N, num_prior_bbox*4, H, W) to (N, num_priors, 4)
         loc = loc.permute(0, 2, 3, 1).contiguous()
-        print('loc shape',loc.shape)
+        #print('loc shape',loc.shape)
         l_channels = int(loc.shape[1] * loc.shape[2] * loc.shape[3] / 4)
-        print('l chanel', l_channels)
+        #print('l chanel', l_channels)
         loc = loc.view(num_batch, l_channels, 4)
 
         return conf, loc
@@ -128,11 +128,11 @@ class SSD(nn.Module):
         # Run the backbone network from [0 to 11, and fetch the bbox class confidence
         # as well as position and size
         y = module_util.forward_from(self.base_net.base_net, 0, self.base_output_layer_indices[0]+1, input)
-        print('y',y.shape)
+        #print('y',y.shape)
         confidence, loc = self.feature_to_bbbox(self.loc_regressor[0], self.classifier[0], y)
         confidence_list.append(confidence)
         loc_list.append(loc)
-        print('cof, loc size', confidence.shape, loc.shape)
+        #print('cof, loc size', confidence.shape, loc.shape)
 
         # Todo: implement run the backbone network from [11 to 13] and compute the corresponding bbox loc and confidence
         y = module_util.forward_from(self.base_net.base_net, self.base_output_layer_indices[0], self.base_output_layer_indices[1] + 1, y)
@@ -140,19 +140,19 @@ class SSD(nn.Module):
         confidence, loc = self.feature_to_bbbox(self.loc_regressor[1], self.classifier[1], y)
         confidence_list.append(confidence)
         loc_list.append(loc)
-        print('cof, loc size', confidence.shape, loc.shape)
+        #print('cof, loc size', confidence.shape, loc.shape)
 
         #conv to 12
         #y = module_util.forward_from(self.base_net.base_net, self.base_output_layer_indices[1], self.base_output_layer_indices[2]+1, y)
         # Todo: forward the 'y' to additional layers for extracting coarse features
         for idx in range (0, len(self.additional_feat_extractor)) :
-            print('current idx', idx)
-            print('y', y.shape)
+            #print('current idx', idx)
+            #print('y', y.shape)
             y = module_util.forward_from(self.additional_feat_extractor[idx], 0, 4, y)
             confidence, loc = self.feature_to_bbbox(self.loc_regressor[idx+2], self.classifier[idx+2], y)
             confidence_list.append(confidence)
             loc_list.append(loc)
-            print('cof, loc size', confidence.shape, loc.shape)
+            #print('cof, loc size', confidence.shape, loc.shape)
 
 
         confidences = torch.cat(confidence_list, 1)
