@@ -69,52 +69,6 @@ def generate_prior_bboxes(prior_layer_cfg):
     return priors_bboxes
 
 
-# def iou(a: torch.Tensor, b: torch.Tensor):
-#     """
-#     # Compute the Intersection over Union
-#     Note: function iou(a, b) used in match_priors
-#     :param a: bounding boxes, dim: (n_items, 4)
-#     :param b: bounding boxes, dim: (n_items, 4) or (1, 4) if b is a reference
-#     :return: iou value: dim: (n_item)
-#     """
-#     # [DEBUG] Check if input is the desire shape
-#
-#     assert a.dim() == 2
-#     assert a.shape[1] == 4
-#     #print ('b dim',b, b.dim())
-#     assert b.dim() == 2
-#     assert b.shape[1] == 4
-#
-#     a = center2corner(a)
-#     b = center2corner(b)
-#
-#
-#     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
-#     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
-#
-#     x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
-#     x_min, y_min = np.minimum(a[:,2],b[:,2]), np.minimum(a[:,3], b[:,3])
-#     temp_w = np.maximum((x_min-x_max),0)
-#     temp_h = np.maximum((y_min-y_max),0)
-#
-#     # x_max, y_max = torch.max(a[:,0],b[:,0]), torch.max(a[:,1], b[:,1])
-#     # x_min, y_min = torch.min(a[:,2],b[:,2]), torch.min(a[:,3], b[:,3])
-#     # print('xmax, ymax, xmin, ymin', x_max, y_max, x_min, y_min)
-#     # temp_w = torch.max((x_min-x_max),0)
-#     # temp_h = torch.max((y_min-y_max),0)
-#     # print('w,h',temp_w, temp_h)
-#     a_and_b = temp_h.cuda()*temp_w.cuda()
-#
-#     # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
-#     # print('a&b a b', a_and_b, a_area, b_area)
-#
-#     iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
-#
-#     # [DEBUG] Check if output is the desire shape
-#     assert iou.dim() == 1
-#     assert iou.shape[0] == a.shape[0]
-#     return iou.view(1,a.shape[0])
-
 def iou(a: torch.Tensor, b: torch.Tensor):
     """
     # Compute the Intersection over Union
@@ -124,38 +78,85 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     :return: iou value: dim: (n_item)
     """
     # [DEBUG] Check if input is the desire shape
+
     assert a.dim() == 2
     assert a.shape[1] == 4
+    #print ('b dim',b, b.dim())
     assert b.dim() == 2
     assert b.shape[1] == 4
 
-    # TODO: implement IoU of two bounding box
-
     a = center2corner(a)
     b = center2corner(b)
-    b = b.reshape(-1, 4)
 
-    a_area = (a[:, 2] - a[:, 0]) * (a[:, 3] - a[:, 1])
-    b_area = (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
 
-    xA = np.maximum(a[:, 0], b[:, 0])
-    yA = np.maximum(a[:, 1], b[:, 1])
-    xB = np.minimum(a[:, 2], b[:, 2])
-    yB = np.minimum(a[:, 3], b[:, 3])
+    a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
+    b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
 
-    intersection_area = np.maximum(0, xB - xA) * np.maximum(0, yB - yA)
-    union_area = (a_area.cuda() + b_area.cuda()) - intersection_area.cuda()
+    print('x_max, y_max', np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1]))
+    x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
+    x_min, y_min = np.minimum(a[:,2],b[:,2]), np.minimum(a[:,3], b[:,3])
+    temp_w = np.maximum((x_min-x_max),0)
+    temp_h = np.maximum((y_min-y_max),0)
 
-    iou = intersection_area.cuda() / union_area
+    # x_max, y_max = torch.max(a[:,0],b[:,0]), torch.max(a[:,1], b[:,1])
+    # x_min, y_min = torch.min(a[:,2],b[:,2]), torch.min(a[:,3], b[:,3])
+    # print('xmax, ymax, xmin, ymin', x_max, y_max, x_min, y_min)
+    # temp_w = torch.max((x_min-x_max),0)
+    # temp_h = torch.max((y_min-y_max),0)
+    # print('w,h',temp_w, temp_h)
+    a_and_b = temp_h.cuda()*temp_w.cuda()
+
+    # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
+    # print('a&b a b', a_and_b, a_area, b_area)
+
+    iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
 
     # [DEBUG] Check if output is the desire shape
     assert iou.dim() == 1
     assert iou.shape[0] == a.shape[0]
-
-    #iou = torch.from_numpy(iou)
-    iou.float()
-
     return iou.view(1,a.shape[0])
+
+# def iou(a: torch.Tensor, b: torch.Tensor):
+#     """
+#     # Compute the Intersection over Union
+#     Note: function iou(a, b) used in match_priors
+#     :param a: bounding boxes, dim: (n_items, 4)
+#     :param b: bounding boxes, dim: (n_items, 4) or (1, 4) if b is a reference
+#     :return: iou value: dim: (n_item)
+#     """
+#     # [DEBUG] Check if input is the desire shape
+#     assert a.dim() == 2
+#     assert a.shape[1] == 4
+#     assert b.dim() == 2
+#     assert b.shape[1] == 4
+#
+#     # TODO: implement IoU of two bounding box
+#
+#     a = center2corner(a)
+#     b = center2corner(b)
+#     b = b.reshape(-1, 4)
+#
+#     a_area = (a[:, 2] - a[:, 0]) * (a[:, 3] - a[:, 1])
+#     b_area = (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
+#
+#     xA = np.maximum(a[:, 0], b[:, 0])
+#     yA = np.maximum(a[:, 1], b[:, 1])
+#     xB = np.minimum(a[:, 2], b[:, 2])
+#     yB = np.minimum(a[:, 3], b[:, 3])
+#
+#     intersection_area = np.maximum(0, xB - xA) * np.maximum(0, yB - yA)
+#     union_area = (a_area.cuda() + b_area.cuda()) - intersection_area.cuda()
+#
+#     iou = intersection_area.cuda() / union_area
+#
+#     # [DEBUG] Check if output is the desire shape
+#     assert iou.dim() == 1
+#     assert iou.shape[0] == a.shape[0]
+#
+#     #iou = torch.from_numpy(iou)
+#     iou.float()
+#
+#     return iou.view(1,a.shape[0])
 
 
 def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels: torch.Tensor, iou_threshold: float):
