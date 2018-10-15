@@ -323,7 +323,7 @@ class TestMatching(unittest.TestCase):
         pp = corner2center(torch.Tensor(pp))
         gt = torch.Tensor([[1,1,1,1]])
         test = iou(pp,torch.Tensor(gt))
-        print(test)
+        print('iou test',test)
 
         test_iou = np.asarray([[0, 0, 0.2, 0.2],
                                [0.1, 0, 0.2, 0.8],

@@ -63,6 +63,6 @@ class MultiboxLoss(nn.Module):
         sel_gt_bbox_loc = gt_bbox_loc[pos_flag]
         loc_huber_loss = F.smooth_l1_loss(sel_pred_loc[2].view(-1, 4), sel_gt_bbox_loc[2].view(-1, 4),
                                           size_average=False).float().cuda() / num_pos
-        conf_loss = conf_loss.mean(dim=0)
-        loc_huber_loss = loc_huber_loss.mean(dim=0)
+        # conf_loss = conf_loss.mean(dim=0)
+        # loc_huber_loss = loc_huber_loss.mean(dim=0)
         return conf_loss, loc_huber_loss
