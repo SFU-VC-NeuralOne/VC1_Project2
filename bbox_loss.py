@@ -51,7 +51,9 @@ class MultiboxLoss(nn.Module):
             neg_class_prob = -F.log_softmax(confidence, dim=2)[:, :, self.neg_label_idx]      # select neg. class prob.
             pos_flag, neg_flag = hard_negative_mining(neg_class_prob, gt_class_labels, neg_pos_ratio=self.neg_pos_ratio)
             sel_flag = pos_flag | neg_flag
+
             num_pos = pos_flag.sum(dim=1, keepdim=True).float().cuda()
+            print('pos neg sel', pos_flag.shape, neg_flag.shape, sel_flag.shape, num_pos)
 
         # Loss for the classification
         num_classes = confidence.shape[2]

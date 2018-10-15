@@ -87,7 +87,7 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     a = center2corner(a)
     b = center2corner(b)
 
-    #print('a b',a.dtype, b.dtype)
+
     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
 
@@ -103,7 +103,7 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     # temp_h = torch.max((y_min-y_max),0)
     # print('w,h',temp_w, temp_h)
     temp = temp_h*temp_w
-    a_and_b = torch.Tensor(temp)
+    a_and_b = torch.Tensor(temp.cuda())
 
     # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
     # print('a&b a b', a_and_b, a_area, b_area)
@@ -142,15 +142,31 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
         iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
 
     matched_labels = torch.argmax(iou_list,dim=0)+1
+    #matched_label = torch.Tensor([])
+    # temp = matched_labels[np.where(matched_labels ==8 )]
+    # temp = temp[np.where(temp < 4)]
+    # print('matched_labels', temp)
+    #print('iou list and prior bbox',iou_list.shape, prior_bboxes.shape)
+    gt_idx = []
+    #make sure every grouth truth has one bbox
+    for i in range (0, gt_bboxes.shape[0]):
+        idx = torch.argmax(iou_list[i,:])
+        matched_labels[idx] = gt_labels[i]
+        prior_bboxes[i] = bbox2loc(gt_bboxes[i].float(), prior_bboxes[idx].float())
+        gt_idx.append(idx)
 
     for i in range(0, iou_list.shape[1]):
-        if torch.min(iou_list[:,i] < iou_threshold):
+        if i in gt_idx:
+            continue
+        elif torch.max(iou_list[:,i]) < iou_threshold:
             matched_labels[i] = 0
-            prior_bboxes[i] = torch.tensor([0.,0.,0.,0.])
+            prior_bboxes[i] = torch.Tensor([0.,0.,0.,0.])
         else:
-            ground_truth = torch.tensor(gt_bboxes[matched_labels[i]-1])
+            ground_truth_bbox = torch.Tensor(gt_bboxes[matched_labels[i]-1])
+            #print(gt_labels[matched_labels[i]-1])
+            matched_labels[i] = gt_labels[matched_labels[i]-1]
             #gt_bboxes[i]=gt_bboxes[i] -1
-            prior_bboxes[i] = bbox2loc(ground_truth.float(), prior_bboxes[i].float())
+            prior_bboxes[i] = bbox2loc(ground_truth_bbox.float(), prior_bboxes[i].float())
 
 
     matched_boxes = prior_bboxes
@@ -211,8 +227,8 @@ def loc2bbox(loc, priors, center_var=0.1, size_var=0.2):
     :param size_var: scale variance of the bounding box size
     :return: boxes: (cx, cy, h, w)
     """
-    assert priors.shape[0] == 1
-    assert priors.dim() == 3
+    # assert priors.shape[0] == 1
+    # assert priors.dim() == 3
 
     # prior bounding boxes
     p_center = priors[..., :2]

@@ -3,6 +3,7 @@ import unittest
 import cv2
 import numpy as np
 from PIL import Image
+from matplotlib import patches
 
 import ssd_net
 from vehicle_detection import load_data
@@ -10,8 +11,9 @@ import matplotlib.pyplot as plt
 import torch
 import mobilenet
 from util import module_util
-from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc,center2corner,corner2center
+from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc, center2corner, corner2center, loc2bbox
 from cityscape_dataset import CityScapeDataset
+from skimage.transform import resize
 
 
 
@@ -204,28 +206,71 @@ class TestBbox2loc(unittest.TestCase):
 class TestDataLoad(unittest.TestCase):
     def test_dataLoad(self):
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
-        test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
+        torch.set_printoptions(precision=10)
+        prior_layer_cfg = [
+            # Example:
+            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+        ]
+        pp = generate_prior_bboxes(prior_layer_cfg)
+
+
+        test_list = load_data('../Debugimage', '../Debuglabel')
+        gt_bbox = np.asarray(test_list[0]['label'][1])*[600/2048, 300/1024, 600/2048, 300/1024]
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=1,
                                                         shuffle=True,
                                                         num_workers=0)
         idx, (img, bbox, label) = next(enumerate(test_data_loader))
+        bbox = bbox[0]
+        label= label[0]
+        print(bbox.shape, label.shape)
 
-        bbox=bbox[0].cpu().numpy()
-        print(np.where(bbox>0))
-
+        print('matched label', np.where(label > 0))
+        bbox_center = loc2bbox(bbox, pp)
+        bbox_corner = center2corner(bbox_center)
         img = img[0].cpu().numpy()
-        img = (img*128+np.asarray((127, 127, 127)))/255
+        img = img.reshape((300, 300, 3))
+        img = (img*128+np.asarray([[127, 127, 127]]))/255
         # for i in range(0, bbox.shape[0]):
         #     cv2.rectangle(img, (bbox[i,0], bbox[i,1]), (bbox[i,2], bbox[i,3]), (0, 255, 0), 3)
-        print(img.shape)
         #cv2.imshow("img", img)
-        plt.imshow(img, cmap='brg')
+        # Create figure and axes
+        fig, ax = plt.subplots(1)
+        imageB_array = resize(img, (300, 600), anti_aliasing=True)
+        ax.imshow(imageB_array, cmap='brg')
+        bbox_corner = bbox_corner.cpu().numpy()
+        bbox_corner = bbox_corner[np.where(label > 0)]
+        print('matched bbox', bbox_corner)
+        for i in range(0,bbox_corner.shape[0]):
+            # print('i point', bbox_corner[i, 0]*600, bbox_corner[i, 1]*300,(bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300)
+            rect = patches.Rectangle((bbox_corner[i, 0]*600, bbox_corner[i, 1]*300), (bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300, linewidth=1, edgecolor='r', facecolor='none') # Create a Rectangle patch
+            ax.add_patch(rect) # Add the patch to the Axes
+        print('gt bbox',gt_bbox)
+        for i in range(0, gt_bbox.shape[0]):
+            rect = patches.Rectangle((gt_bbox[i][0], gt_bbox[i][1]),
+                                     (gt_bbox[i][2] - gt_bbox[i][0]),
+                                     (gt_bbox[i][3] - gt_bbox[i][1]), linewidth=2, edgecolor='g',
+                                     facecolor='none')  # Create a Rectangle patch
+            ax.add_patch(rect)  # Add the patch to the Axes
+
+
+
         plt.show()
         #cv2.waitKey(0)
-        print('bbox',bbox)
-        print('label',label)
+        # print('bbox',bbox)
+        # print('label',label)
 
 
 class TestCorner2(unittest.TestCase):
@@ -269,3 +314,20 @@ class TestLoadingNN(unittest.TestCase):
         self.base_net.load_state_dict(cur_dict)
 
         print(input_state.keys())
+
+class TestMatching(unittest.TestCase):
+    def test_Match(self):
+        pp=np.asarray([[0,0,2,2],[1,0,3,2  ],[0,0,1,3],[3,3,4,4]],dtype=np.float32)
+        pp = corner2center(torch.Tensor(pp))
+        gt = torch.Tensor([[1,1,1,1]])
+        test = iou(pp,torch.Tensor(gt))
+        print(test)
+
+        test_iou = np.asarray([[0, 0, 0.2, 0.2],
+                               [0.1, 0, 0.2, 0.8],
+                               [0, 0.4, 0.1, 0.3],
+                               [0.3, 0.3, 0.5, 0.9]], dtype=np.float32)
+        test_iou = torch.Tensor(test_iou)
+        for i in range(0, test_iou.shape[1]):
+            if torch.max(test_iou[:, i]) < 0.5:
+                print(i)

@@ -12,8 +12,10 @@ import matplotlib.pyplot as plt
 from bbox_loss import MultiboxLoss
 from ssd_net import SSD
 
-cityscape_label_dir = '../cityscapes_samples_labels'
-cityscape_img_dir ='../cityscapes_samples'
+# cityscape_label_dir = '../cityscapes_samples_labels'
+# cityscape_img_dir ='../cityscapes_samples'
+cityscape_label_dir = '../Debuglabel'
+cityscape_img_dir ='../Debugimage'
 
 # cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
 # cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
@@ -25,8 +27,8 @@ pth_path='/'
 
 def load_data(picture_path, label_path):
     data_list = []
-    vehicle_list = ['car', 'car group','truck', 'truck group','bus','bus group', 'train','train group','tram', 'motorcycle', 'bicycle', 'caravan', 'trailer']
-    human_list = ['person','rider', 'person group', 'rider group']
+    vehicle_list = ['car', 'cargroup','truck', 'truckgroup','bus','busgroup', 'train','traingroup','tram', 'motorcycle','motorcyclegroup','bicycle', 'bicyclegroup','caravan', 'trailer']
+    human_list = ['person','rider', 'persongroup', 'ridergroup']
     for root, dirs, files in os.walk(label_path):
         for name in files:
             if name.endswith((".json")):
@@ -34,7 +36,7 @@ def load_data(picture_path, label_path):
                 json_file_path = os.path.join(label_path, subfolder, name)
                 img_file_name_idx = name.find('_',20)
                 img_file_path = os.path.join(picture_path, subfolder, name[0:img_file_name_idx] + '_leftImg8bit.png')
-                print(img_file_path)
+                # print(img_file_path)
                 with open(json_file_path, 'r') as f:
                     frame_info = json.load(f)
                     label = []
@@ -57,6 +59,7 @@ def load_data(picture_path, label_path):
                             #classes.append({'class': 'human', 'position':[left_top, right_bottom]})
                     if(len(label)!=0):
                         data_list.append({'file_path':img_file_path, 'label':[label,bbox]})
+                        print('file_path',img_file_path, 'label',[label,bbox] )
     return data_list
 
 def train(net, train_data_loader, validation_data_loader):
