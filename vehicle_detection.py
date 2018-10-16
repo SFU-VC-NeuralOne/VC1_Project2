@@ -80,6 +80,7 @@ def train(net, train_data_loader, validation_data_loader):
 
     train_losses = []
     valid_losses = []
+    best_valid_loss = 1000
 
     max_epochs = 10
     itr = 0
@@ -133,7 +134,11 @@ def train(net, train_data_loader, validation_data_loader):
                 avg_valid_loss = np.mean(np.asarray(valid_loss_set))
                 print('Valid Epoch: %d Itr: %d Loss: %f' % (epoch_idx, itr, avg_valid_loss))
                 valid_losses.append((itr, avg_valid_loss))
-
+                if (avg_valid_loss < best_valid_loss):
+                    net_state = net.state_dict()  # serialize trained model
+                    filename = 'ssd_net.pth'
+                    torch.save(net_state, os.path.join(pth_path, filename))
+                    best_valid_loss = avg_valid_loss
     train_losses = np.asarray(train_losses).reshape((-1,2))
     valid_losses = np.asarray(valid_losses).reshape((-1,2))
 
