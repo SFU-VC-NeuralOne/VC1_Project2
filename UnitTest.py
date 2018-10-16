@@ -228,6 +228,7 @@ class TestDataLoad(unittest.TestCase):
 
         test_list = load_data('../Debugimage', '../Debuglabel')
         gt_bbox = np.asarray(test_list[0]['label'][1])*[600/2048, 300/1024, 600/2048, 300/1024]
+        print('ground truth from file:', test_list[0]['label'][0])
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=1,

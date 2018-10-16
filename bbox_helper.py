@@ -198,11 +198,12 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     # print('matched_labels', temp)
     # print('iou list and prior bbox',iou_list.shape, prior_bboxes.shape)
     gt_idx = []
+    matched_boxes = prior_bboxes.clone()
     #make sure every grouth truth has one bbox
     for i in range (0, gt_bboxes.shape[0]):
         idx = torch.argmax(iou_list[i,:])
         matched_labels[idx] = gt_labels[i]
-        prior_bboxes[i] = bbox2loc(gt_bboxes[i].float(), prior_bboxes[idx].float())
+        matched_boxes[i] = bbox2loc(gt_bboxes[i].float(), prior_bboxes[idx].float())
         gt_idx.append(idx)
 
     for i in range(0, iou_list.shape[1]):
@@ -210,16 +211,16 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
             continue
         elif torch.max(iou_list[:,i]) < iou_threshold:
             matched_labels[i] = 0
-            prior_bboxes[i] = torch.Tensor([0.,0.,0.,0.])
+            matched_boxes[i] = torch.Tensor([0.,0.,0.,0.])
         else:
             ground_truth_bbox = torch.Tensor(gt_bboxes[matched_labels[i]-1])
             #print(gt_labels[matched_labels[i]-1])
             matched_labels[i] = gt_labels[matched_labels[i]-1]
             #gt_bboxes[i]=gt_bboxes[i] -1
-            prior_bboxes[i] = bbox2loc(ground_truth_bbox.float(), prior_bboxes[i].float())
+            matched_boxes[i] = bbox2loc(ground_truth_bbox.float(), prior_bboxes[i].float())
 
 
-    matched_boxes = prior_bboxes
+    #matched_boxes = prior_bboxes
 
 
     # [DEBUG] Check if output is the desire shape
