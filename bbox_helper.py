@@ -132,8 +132,8 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     assert b.dim() == 2
     assert b.shape[1] == 4
 
-    a = center2corner(a)
-    b = center2corner(b)
+    a = center2corner(a).cuda()
+    b = center2corner(b).cuda()
 
 
     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])

@@ -14,15 +14,15 @@ from bbox_loss import MultiboxLoss
 from ssd_net import SSD
 import pickle
 
-# cityscape_label_dir = '../cityscapes_samples_labels'
-# cityscape_img_dir ='../cityscapes_samples'
+cityscape_label_dir = '../cityscapes_samples_labels'
+cityscape_img_dir ='../cityscapes_samples'
 
 
 # cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
 # cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
 
-cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
-cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+# cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+# cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
 
 pth_path='../'
 
@@ -164,7 +164,7 @@ def main():
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
                                                     batch_size=32,
                                                     shuffle=True,
-                                                    num_workers=6)
+                                                    num_workers=0)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
           len(train_data_loader))
 
@@ -172,7 +172,7 @@ def main():
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
                                                          batch_size=32,
                                                          shuffle=True,
-                                                         num_workers=6)
+                                                         num_workers=0)
     print('Total validation items:', len(validation_dataset))
     train(net, train_data_loader, validation_data_loader)
 

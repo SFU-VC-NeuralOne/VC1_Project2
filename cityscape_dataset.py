@@ -79,5 +79,6 @@ class CityScapeDataset(Dataset):
         assert bbox_tensor.shape[1] == 4
         assert bbox_label_tensor.dim() == 1
         assert bbox_label_tensor.shape[0] == bbox_tensor.shape[0]
-        # print('after matching bbx, bbx_label',bbox_tensor.shape,bbox_label_tensor.shape)
+        temp = bbox_tensor.cpu()
+        print('after matching bbx', temp.size(), temp[np.where(temp == np.NaN)])
         return img_tensor, bbox_tensor, bbox_label_tensor
