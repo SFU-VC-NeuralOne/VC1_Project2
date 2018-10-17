@@ -77,8 +77,8 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     :return: iou value: dim: (n_item)
     """
     # [DEBUG] Check if input is the desire shape
-    a = center2corner(a)
-    b = center2corner(b)
+    a = center2corner(a).cuda()
+    b = center2corner(b).cuda()
     a_sh = a.size(0)
     b_sh = b.size(0)
     max_x_y = torch.min(a[:, 2:].unsqueeze(1).expand(a_sh, b_sh, 2), b[:, 2:].unsqueeze(0).expand(a_sh, b_sh, 2))
@@ -116,10 +116,11 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
 
     # iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
     matched_labels = torch.argmax(iou_list,dim=0)+1.0
+    matched_labels.cuda()
 
     gt_idx = torch.argmax(iou_list, dim=1)
     size = gt_idx.shape[0]
-    gt_label_idx = torch.arange(size)
+    gt_label_idx = torch.arange(size).cuda()
     # print('gt lable idx dtype',gt_label_idx.dtype)
     #print(gt_idx.dtype, gt_label_idx.dtype, matched_labels.dtype, gt_labels.dtype)
     matched_labels[gt_idx] = gt_label_idx+1
@@ -140,12 +141,12 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     # gt_idx = np.asarray(gt_idx)
     # print('ground truth bbox',matched_boxes[gt_idx])
     #zero out labels below 0.5
-    zero = torch.zeros(iou_list.shape)
+    zero = torch.zeros(iou_list.shape).cuda()
     iou_list = torch.where(iou_list < 0.5, zero, iou_list)
     # print('ground truth matched bbox', matched_labels[gt_idx])
     zero_index = (torch.max(iou_list, dim=0)[0] == 0).nonzero()
     matched_labels[zero_index.view(1, -1)] = 0
-    matched_boxes[zero_index.view(1, -1)] = torch.Tensor([0.,0.,0.,0.])
+    matched_boxes[zero_index.view(1, -1)] = torch.Tensor([0.,0.,0.,0.]).cuda()
     # print('ground truth matched bbox', matched_labels[gt_idx])
     possitive_sample_idx = matched_labels.nonzero()
     temp = matched_labels[possitive_sample_idx.view(1, -1)]

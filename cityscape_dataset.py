@@ -53,8 +53,11 @@ class CityScapeDataset(Dataset):
         sample_labels = ground_truth[0]
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
-        if random.choice([True, False]) == True:
-            sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 30) / 10.0)
+
+        augmentation = np.random.randint(0, 4)
+
+        if augmentation == 0:
+            sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 25) / 10.0)
 
         """
         # horizontal flip
@@ -67,7 +70,7 @@ class CityScapeDataset(Dataset):
             sample_bboxes[:,2] = width-flipped_boxes[:,2]
         """
 
-        if random.choice([True, False]) == True:
+        if augmentation == 1:
             if random.choice([True, False]) == True:
                 sample_img = sample_img.filter(ImageFilter.BLUR)
             else:
@@ -100,7 +103,7 @@ class CityScapeDataset(Dataset):
         # 4. Do the augmentation if needed. e.g. random clip the bounding box or flip the bounding box
         # TODO: data augmentation
         # 5. Do the matching prior and generate ground-truth labels as well as the boxes
-        bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes, sample_bboxes, torch.Tensor(sample_labels), iou_threshold=0.5)
+        bbox_tensor, bbox_label_tensor = match_priors(self.prior_bboxes.cuda(), sample_bboxes.cuda(), torch.Tensor(sample_labels).cuda(), iou_threshold=0.5)
         img_tensor = torch.Tensor(img_array)
         img_tensor = img_tensor.view(c, h, w)
         #print(img_tensor.shape)

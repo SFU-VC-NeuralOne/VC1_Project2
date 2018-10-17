@@ -14,17 +14,17 @@ from bbox_loss import MultiboxLoss
 from ssd_net import SSD
 import pickle
 
-cityscape_label_dir = '../cityscapes_samples_labels'
-cityscape_img_dir ='../cityscapes_samples'
+# cityscape_label_dir = '../cityscapes_samples_labels'
+# cityscape_img_dir ='../cityscapes_samples'
 learning_rate = 1e-4
-Tuning = True
+Tuning = False
 
 
 # cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
 # cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
 
-# cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
-# cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
 
 pth_path='../'
 
@@ -104,7 +104,7 @@ def train(net, train_data_loader, validation_data_loader):
             train_label = Variable(train_label.cuda())
             loss_cof, loss_loc = criterion(train_cof, train_loc, train_label, train_bbox)
             loss = loss_cof + loss_cof
-            #print('training cof loc loss', loss_cof.view(1,-1), loss_loc.view(1,-1))
+            print('training cof loc loss', loss_cof.view(1,-1), loss_loc.view(1,-1))
             loss = loss.sum()
             loss.backward()
             optimizer.step()
@@ -128,7 +128,7 @@ def train(net, train_data_loader, validation_data_loader):
                     loss_cof, loss_loc = criterion(valid_cof, valid_loc, valid_label, valid_bbox)
                     valid_loss = loss_cof+loss_loc
                     valid_loss = valid_loss.sum()
-                    #print('validation cof loc loss', loss_cof.view(1,-1), loss_loc.view(1,-1))
+                    print('validation cof loc loss', loss_cof.view(1,-1), loss_loc.view(1,-1))
                     valid_loss_set.append(valid_loss.item())
 
                     valid_itr += 1
@@ -172,17 +172,17 @@ def main():
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=64,
+                                                    batch_size=4,
                                                     shuffle=True,
-                                                    num_workers=6)
+                                                    num_workers=0)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
           len(train_data_loader))
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=64,
+                                                         batch_size=4,
                                                          shuffle=True,
-                                                         num_workers=6)
+                                                         num_workers=0)
     print('Total validation items:', len(validation_dataset))
     if Tuning:
         net_state = torch.load(os.path.join(pth_path, 'ssd_net.pth'))
