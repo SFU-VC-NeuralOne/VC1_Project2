@@ -239,7 +239,7 @@ class TestDataLoad(unittest.TestCase):
         label= label[0]
         print(bbox.shape, label.shape)
 
-        print('matched label', np.where(label > 0))
+        print('matched label', label[np.where(label > 1)])
         bbox_center = loc2bbox(bbox, pp)
         bbox_corner = center2corner(bbox_center)
         img = img[0].cpu().numpy()
@@ -254,10 +254,10 @@ class TestDataLoad(unittest.TestCase):
         ax.imshow(imageB_array, cmap='brg')
         bbox_corner = bbox_corner.cpu().numpy()
         bbox_corner = bbox_corner[np.where(label > 0)]
-        print('matched bbox', bbox_corner)
+        print('matched bbox ======', bbox_corner)
         for i in range(0,bbox_corner.shape[0]):
             # print('i point', bbox_corner[i, 0]*600, bbox_corner[i, 1]*300,(bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300)
-            rect = patches.Rectangle((bbox_corner[i, 0]*600, bbox_corner[i, 1]*300), (bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300, linewidth=1, edgecolor='r', facecolor='none') # Create a Rectangle patch
+            rect = patches.Rectangle((bbox_corner[i, 0]*600, bbox_corner[i, 1]*300), (bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300, linewidth=3, edgecolor='r', facecolor='none') # Create a Rectangle patch
             ax.add_patch(rect) # Add the patch to the Axes
         print('gt bbox',gt_bbox)
         for i in range(0, gt_bbox.shape[0]):
@@ -326,14 +326,58 @@ class TestMatching(unittest.TestCase):
         test = iou(pp,torch.Tensor(gt))
         print('iou test',test)
 
-        test_iou = np.asarray([[0, 0, 0.2, 0.2],
-                               [0.1, 0, 0.2, 0.8],
-                               [0, 0.4, 0.1, 0.3],
-                               [0.3, 0.3, 0.5, 0.9]], dtype=np.float32)
+        test_iou = np.asarray([[0, 0, 0.2, 0.2, 0.6],
+                               [0.1, 0, 0.2, 0.8, 0.2],
+                               [0, 0.4, 0.1, 0.3, 0.3],
+                               [0.3, 0.3, 0.5, 0.9, 0.1]], dtype=np.float32)
         test_iou = torch.Tensor(test_iou)
+        print('test argmax',torch.argmax(test_iou,dim=1))
+        zero =torch.zeros(test_iou.shape)
+        test_iou = torch.where(test_iou<0.5, zero, test_iou)
+        print(test_iou)
+        #zero_idx = torch.where(torch.max(test_iou, dim=0)[0] == 0, )
+        gt_label = torch.tensor([1,1,2,2])
+        matched_label = torch.tensor(([1,3, 4, 2, 2]))
+        print('variable matched_label', matched_label, matched_label.dtype)
+        zero_index = (torch.max(test_iou, dim=0)[0] == 0).nonzero()
+        print('index of below 0.5',zero_index, zero_index.dtype, zero_index, zero_index.view(1, -1))
+        matched_label[zero_index.view(1, -1)] = 0
+        print('after clear out the zero',matched_label)
+        possitive_sample_idx = matched_label.nonzero()
+        matched_label[possitive_sample_idx.view(1,-1)] = gt_label[matched_label[possitive_sample_idx.view(1,-1)]-1]
+        print('non zero labels',possitive_sample_idx, possitive_sample_idx.dtype)
+        print('final label', matched_label)
+        print('test where',torch.max(test_iou, dim=0))
         for i in range(0, test_iou.shape[1]):
             if torch.max(test_iou[:, i]) < 0.5:
                 print(i)
         timestamp = time.time()
         filename = 'ssd_net' + str(timestamp) + '.pth'
         print(filename)
+
+class TestIntercetion(unittest.TestCase):
+    def test_intersect(self):
+        """ We resize both tensors to [A,B,2] without new malloc:
+            [A,2] -> [A,1,2] -> [A,B,2]
+            [B,2] -> [1,B,2] -> [A,B,2]
+            Then we compute the area of intersect between box_a and box_b.
+            Args:
+              box_a: (tensor) bounding boxes, Shape: [A,4].
+              box_b: (tensor) bounding boxes, Shape: [B,4].
+            Return:
+              (tensor) intersection area, Shape: [A,B].
+            """
+        box_a = torch.Tensor([[0,0,2,2],[1,0,3,2],[0,0,1,3],[3,3,4,4]])
+        box_b = torch.Tensor([[2,0,3,1],[3,0,4,1]])
+        A = box_a.size(0)
+        B = box_b.size(0)
+        # print(box_a[:, 2:].unsqueeze(1))
+        # print(box_a[:, 2:].unsqueeze(0))
+        # print(box_a[:, 2:].unsqueeze(1).expand(A, B, 2))
+        max_xy = torch.min(box_a[:, 2:].unsqueeze(1).expand(A, B, 2),
+                           box_b[:, 2:].unsqueeze(0).expand(A, B, 2))
+        min_xy = torch.max(box_a[:, :2].unsqueeze(1).expand(A, B, 2),
+                           box_b[:, :2].unsqueeze(0).expand(A, B, 2))
+        inter = torch.clamp((max_xy - min_xy), min=0)
+        # print(inter)
+        print(inter[:, :, 0] * inter[:, :, 1])
