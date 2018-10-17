@@ -172,17 +172,17 @@ def main():
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=4,
+                                                    batch_size=32,
                                                     shuffle=True,
-                                                    num_workers=0)
+                                                    num_workers=4)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
           len(train_data_loader))
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=4,
+                                                         batch_size=32,
                                                          shuffle=True,
-                                                         num_workers=0)
+                                                         num_workers=4)
     print('Total validation items:', len(validation_dataset))
     if Tuning:
         net_state = torch.load(os.path.join(pth_path, 'ssd_net.pth'))
