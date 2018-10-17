@@ -68,54 +68,6 @@ def generate_prior_bboxes(prior_layer_cfg):
     assert priors_bboxes.shape[1] == 4
     return priors_bboxes
 
-
-# def iou(a: torch.Tensor, b: torch.Tensor):
-#     """
-#     # Compute the Intersection over Union
-#     Note: function iou(a, b) used in match_priors
-#     :param a: bounding boxes, dim: (n_items, 4)
-#     :param b: bounding boxes, dim: (n_items, 4) or (1, 4) if b is a reference
-#     :return: iou value: dim: (n_item)
-#     """
-#     # [DEBUG] Check if input is the desire shape
-#
-#     assert a.dim() == 2
-#     assert a.shape[1] == 4
-#     #print ('b dim',b, b.dim())
-#     assert b.dim() == 2
-#     assert b.shape[1] == 4
-#
-#     a = center2corner(a)
-#     b = center2corner(b)
-#
-#
-#     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
-#     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
-#
-#     #print('x_max, y_max', np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1]))
-#     x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
-#     x_min, y_min = np.minimum(a[:,2],b[:,2]), np.minimum(a[:,3], b[:,3])
-#     temp_w = np.maximum((x_min-x_max),0)
-#     temp_h = np.maximum((y_min-y_max),0)
-#
-#     # x_max, y_max = torch.max(a[:,0],b[:,0]), torch.max(a[:,1], b[:,1])
-#     # x_min, y_min = torch.min(a[:,2],b[:,2]), torch.min(a[:,3], b[:,3])
-#     # print('xmax, ymax, xmin, ymin', x_max, y_max, x_min, y_min)
-#     # temp_w = torch.max((x_min-x_max),0)
-#     # temp_h = torch.max((y_min-y_max),0)
-#     # print('w,h',temp_w, temp_h)
-#     a_and_b = temp_h.cuda()*temp_w.cuda()
-#
-#     # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
-#     # print('a&b a b', a_and_b, a_area, b_area)
-#
-#     iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
-#
-#     # [DEBUG] Check if output is the desire shape
-#     assert iou.dim() == 1
-#     assert iou.shape[0] == a.shape[0]
-#     return iou.view(1,a.shape[0])
-
 def iou(a: torch.Tensor, b: torch.Tensor):
     """
     # Compute the Intersection over Union
@@ -125,46 +77,19 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     :return: iou value: dim: (n_item)
     """
     # [DEBUG] Check if input is the desire shape
+    a = center2corner(a)
+    b = center2corner(b)
+    a_sh = a.size(0)
+    b_sh = b.size(0)
+    max_x_y = torch.min(a[:, 2:].unsqueeze(1).expand(a_sh, b_sh, 2), b[:, 2:].unsqueeze(0).expand(a_sh, b_sh, 2))
+    min_x_y = torch.max(a[:, :2].unsqueeze(1).expand(a_sh, b_sh, 2), b[:, :2].unsqueeze(0).expand(a_sh, b_sh, 2))
+    inter = torch.clamp((max_x_y - min_x_y), min=0)
+    inter = inter[:, :, 0] * inter[:, :, 1]
+    area_a = ((a[:, 2] - a[:, 0]) * (a[:, 3] - a[:, 1])).unsqueeze(1).expand_as(inter)
+    area_b = ((b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])).unsqueeze(0).expand_as(inter)
+    union = area_a + area_b - inter
 
-    assert a.dim() == 2
-    assert a.shape[1] == 4
-    #print ('b dim',b, b.dim())
-    assert b.dim() == 2
-    assert b.shape[1] == 4
-
-    a = center2corner(a).cuda()
-    b = center2corner(b).cuda()
-
-
-    a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
-    b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
-    #print(a_area)
-
-    #print('x_max, y_max', np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1]))
-    x_max, y_max = torch.max(input = a[:,0], other = b[:,0]), torch.max(input = a[:,1], other = b[:,1])
-    x_min, y_min = torch.min(input = a[:,2],other = b[:,2]), torch.min(input = a[:,3], other = b[:,3])
-    temp_w = x_min-x_max
-    temp_w[temp_w<=0.0] = 0.0
-    temp_h = y_min-y_max
-    temp_h[temp_h<=0.0] = 0.0
-
-    # x_max, y_max = torch.max(a[:,0],b[:,0]), torch.max(a[:,1], b[:,1])
-    # x_min, y_min = torch.min(a[:,2],b[:,2]), torch.min(a[:,3], b[:,3])
-    # print('xmax, ymax, xmin, ymin', x_max, y_max, x_min, y_min)
-    # temp_w = torch.max((x_min-x_max),0)
-    # temp_h = torch.max((y_min-y_max),0)
-    # print('w,h',temp_w, temp_h)
-    a_and_b = temp_h*temp_w
-
-    # print('a&b a b',a_and_b.dtype, a_area.dtype, b_area.dtype)
-    # print('a&b a b', a_and_b, a_area, b_area)
-
-    iou = a_and_b/(a_area+b_area-a_and_b)
-
-    # [DEBUG] Check if output is the desire shape
-    assert iou.dim() == 1
-    assert iou.shape[0] == a.shape[0]
-    return iou.view(1,a.shape[0])
+    return (inter / union).reshape(-1, a_sh)
 
 def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels: torch.Tensor, iou_threshold: float):
     """
@@ -187,9 +112,9 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.shape[1] == 4
 
     # print('gt_bbox',gt_bboxes.dtype)
-    iou_list = torch.tensor([]).cuda()
-    for i in range(0, gt_bboxes.shape[0]):
-        iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
+    iou_list = iou(prior_bboxes,gt_bboxes)
+
+    # iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
     matched_labels = torch.argmax(iou_list,dim=0)+1.0
 
     gt_idx = torch.argmax(iou_list, dim=1)
@@ -198,7 +123,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     # print('gt lable idx dtype',gt_label_idx.dtype)
     #print(gt_idx.dtype, gt_label_idx.dtype, matched_labels.dtype, gt_labels.dtype)
     matched_labels[gt_idx] = gt_label_idx+1
-    print('ground truth matched bbox', matched_labels[gt_idx])
+    # print('ground truth matched bbox', matched_labels[gt_idx])
     matched_boxes = prior_bboxes.clone()
     # print('before',matched_boxes[gt_idx])
     matched_boxes[gt_idx] = bbox2loc(gt_bboxes[gt_label_idx], prior_bboxes[gt_idx])
@@ -217,19 +142,18 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     #zero out labels below 0.5
     zero = torch.zeros(iou_list.shape)
     iou_list = torch.where(iou_list < 0.5, zero, iou_list)
-    print('ground truth matched bbox', matched_labels[gt_idx])
+    # print('ground truth matched bbox', matched_labels[gt_idx])
     zero_index = (torch.max(iou_list, dim=0)[0] == 0).nonzero()
     matched_labels[zero_index.view(1, -1)] = 0
     matched_boxes[zero_index.view(1, -1)] = torch.Tensor([0.,0.,0.,0.])
-    print('ground truth matched bbox', matched_labels[gt_idx])
+    # print('ground truth matched bbox', matched_labels[gt_idx])
     possitive_sample_idx = matched_labels.nonzero()
     temp = matched_labels[possitive_sample_idx.view(1, -1)]
-    print('possitive sample dtype',temp)
-    matched_labels[possitive_sample_idx.view(1, -1)-1] = gt_labels[matched_labels[possitive_sample_idx.view(1, -1)] - 1].long()
-    print('2440 bbox',matched_boxes[2400])
+    # print('possitive sample dtype',temp)
+
 
     matched_boxes[possitive_sample_idx.view(1, -1)] = bbox2loc(gt_bboxes[matched_labels[possitive_sample_idx.view(1, -1)] - 1], prior_bboxes[possitive_sample_idx.view(1, -1)])
-
+    matched_labels[possitive_sample_idx.view(1, -1)] = gt_labels[matched_labels[possitive_sample_idx.view(1, -1)] - 1].long()
     # for i in range(gt_bboxes.shape[0]):
     #     matched_boxes_for_this = ((matched_labels[possitive_sample_idx.view(1, -1)] - 1) ==i).nonzero()
     #     matched_boxes[matched_boxes_for_this] = bbox2loc(gt_bboxes[i], prior_bboxes[matched_boxes_for_this])
@@ -253,7 +177,6 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     # print('ground truth bbox', matched_labels[gt_idx])
     # print('ground truth bbox',matched_labels[np.where(matched_labels>0)])
     #matched_boxes = prior_bboxes
-    print(matched_boxes[2400])
 
     # [DEBUG] Check if output is the desire shape
     assert matched_boxes.dim() == 2

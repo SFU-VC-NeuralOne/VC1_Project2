@@ -1,6 +1,8 @@
+import random
+
 import numpy as np
 import torch.nn
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 from torch.utils.data import Dataset
 from bbox_helper import generate_prior_bboxes, match_priors,corner2center
 
@@ -51,6 +53,36 @@ class CityScapeDataset(Dataset):
         sample_labels = ground_truth[0]
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
+        if random.choice([True, False]) == True:
+            sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 30) / 10.0)
+
+        """
+        # horizontal flip
+        if random.choice ([True,False]) == True:
+            sample_img = sample_img.transpose(Image.FLIP_LEFT_RIGHT)
+            width,height = sample_img.size[:2]
+            flipped_boxes = sample_bboxes.copy()
+            #sample_bboxes = [float(width), float(top), float(left), float(top)] - flipped_bboxes
+            sample_bboxes[:,0] = width-flipped_boxes[:,0]
+            sample_bboxes[:,2] = width-flipped_boxes[:,2]
+        """
+
+        if random.choice([True, False]) == True:
+            if random.choice([True, False]) == True:
+                sample_img = sample_img.filter(ImageFilter.BLUR)
+            else:
+                sample_img = sample_img.filter(ImageFilter.SHARPEN)
+
+        # if random.choice([True, False]) == True:
+        #     w, h = sample_img.size[:2]
+        #     top = np.random.randint(0, 200)
+        #     bottom = np.random.randint(h - 200, h)
+        #     left = np.random.randint(0, 200)
+        #     right = np.random.randint(w - 200, w)
+        #
+        #     sample_img = sample_img.crop((left, top, right, bottom))
+        #
+        #     sample_bboxes = sample_bboxes - [float(left), float(top), float(left), float(top)]
         # 2. Normalize the image with self.mean and self.std
         img = sample_img.resize((300, 300))
         img_array = np.asarray(img)

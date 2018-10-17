@@ -259,6 +259,7 @@ class TestDataLoad(unittest.TestCase):
             # print('i point', bbox_corner[i, 0]*600, bbox_corner[i, 1]*300,(bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300)
             rect = patches.Rectangle((bbox_corner[i, 0]*600, bbox_corner[i, 1]*300), (bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300, linewidth=3, edgecolor='r', facecolor='none') # Create a Rectangle patch
             ax.add_patch(rect) # Add the patch to the Axes
+            print(i)
         print('gt bbox',gt_bbox)
         for i in range(0, gt_bbox.shape[0]):
             rect = patches.Rectangle((gt_bbox[i][0], gt_bbox[i][1]),
@@ -379,5 +380,16 @@ class TestIntercetion(unittest.TestCase):
         min_xy = torch.max(box_a[:, :2].unsqueeze(1).expand(A, B, 2),
                            box_b[:, :2].unsqueeze(0).expand(A, B, 2))
         inter = torch.clamp((max_xy - min_xy), min=0)
+        inter = inter[:, :, 0] * inter[:, :, 1]
+        area_a = ((box_a[:, 2] - box_a[:, 0]) *
+                  (box_a[:, 3] -
+                   box_a[:, 1])).unsqueeze(1).expand_as(inter)
+        area_b = ((box_b[:, 2] - box_b[:, 0]) *
+                  (box_b[:, 3] -
+                   box_b[:, 1])).unsqueeze(0).expand_as(inter)
+        union = area_a + area_b - inter
         # print(inter)
-        print(inter[:, :, 0] * inter[:, :, 1])
+        temp = (inter / union).reshape(-1,A)
+        print(temp)
+        print(inter / union)
+        print(iou(box_a, box_b))

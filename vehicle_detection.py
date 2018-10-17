@@ -30,7 +30,7 @@ pth_path='../'
 
 def load_data(picture_path, label_path):
     data_list = []
-    vehicle_list = ['car', 'cargroup', 'truck', 'truckgroup', 'bus', 'busgroup', 'train', 'traingroup', 'tram',
+    vehicle_list = ['car', 'truck', 'truckgroup', 'bus', 'busgroup', 'train', 'traingroup', 'tram',
                     'motorcycle', 'motorcyclegroup', 'bicycle', 'bicyclegroup', 'caravan', 'trailer']
     human_list = ['person', 'rider', 'persongroup', 'ridergroup']
     if os.path.isfile('datalist.pkl'):
@@ -43,6 +43,9 @@ def load_data(picture_path, label_path):
                     subfolder = name[0:re.search('\d',name).start()-1]
                     json_file_path = os.path.join(label_path, subfolder, name)
                     img_file_name_idx = name.find('_',21)
+                    if(name[0:img_file_name_idx] == 'troisdorf_000000_000073'):
+                        print('skipped:',name[0:img_file_name_idx])
+                        continue
                     img_file_path = os.path.join(picture_path, subfolder, name[0:img_file_name_idx] + '_leftImg8bit.png')
                     # print(img_file_path)
                     with open(json_file_path, 'r') as f:
