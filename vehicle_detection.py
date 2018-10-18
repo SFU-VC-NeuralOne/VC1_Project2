@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from bbox_loss import MultiboxLoss
 from ssd_net import SSD
 import pickle
+import torch.nn.functional as F
 
 cityscape_label_dir = '../cityscapes_samples_labels'
 cityscape_img_dir ='../cityscapes_samples'
@@ -139,13 +140,13 @@ def train(net, train_data_loader, validation_data_loader):
                     # compute loss
                     valid_label = Variable(valid_label.cuda())
                     loss_cof, loss_loc = criterion(valid_cof, valid_loc, valid_label, valid_bbox)
-                    # temp_loss_cof = valid_cof.clone()
-                    # temp_loss_cof=temp_loss_cof.detach().cpu().numpy()
+                    temp_loss_cof = valid_cof.clone()
+                    temp_loss_cof=temp_loss_cof.detach().cpu().numpy()
                     # temp_valid_label = valid_label.clone()
                     # temp_valid_label=temp_valid_label.detach().cpu().numpy()
                     # pred_cof = np.max(temp_loss_cof,axis = 0)
                     #print(np.sum(np.where(temp_valid_label == pred_cof)))
-                    # print(temp_loss_cof)
+                    print(temp_loss_cof)
                     # print(np.sum(len(temp_valid_label)))
                     valid_loss = loss_cof+loss_loc
                     # valid_loss = valid_loss.sum()
