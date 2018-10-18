@@ -54,8 +54,8 @@ class CityScapeDataset(Dataset):
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
 
-        #augmentation = np.random.randint(0, 8)
-        augmentation=None
+        augmentation = np.random.randint(0, 6)
+        # augmentation=1
         if augmentation == 0:
             sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 25) / 10.0)
 
@@ -79,14 +79,17 @@ class CityScapeDataset(Dataset):
 
         if augmentation == 3:
             w, h = sample_img.size[:2]
-            left = np.random.randint(0, np.min(sample_bboxes[:, 0])-10)
-            top = np.random.randint(0, np.min(sample_bboxes[:, 1])-10)
-            right = np.random.randint(np.min(sample_bboxes[:, 2])+10, w)
-            bottom = np.random.randint(np.min(sample_bboxes[:, 3])+10, h)
+            left = np.random.randint(0, np.min(sample_bboxes[:, 0])-np.min(sample_bboxes[:, 0])/5)
+            top = np.random.randint(0, np.min(sample_bboxes[:, 1])-np.min(sample_bboxes[:, 1])/5)
+            right = np.random.randint(np.min(sample_bboxes[:, 2])+np.min(sample_bboxes[:, 2])/5, w)
+            bottom = np.random.randint(np.min(sample_bboxes[:, 3])+np.min(sample_bboxes[:, 3])/5, h)
 
             sample_img = sample_img.crop((left, top, right, bottom))
-
+            # print(sample_bboxes[0])
+            # print("left", left)
             sample_bboxes = sample_bboxes - [float(left), float(top), float(left), float(top)]
+            # print(sample_bboxes[0])
+
 
 
         # 2. Normalize the image with self.mean and self.std

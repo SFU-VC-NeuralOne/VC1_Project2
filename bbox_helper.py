@@ -89,7 +89,46 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     area_b = ((b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])).unsqueeze(0).expand_as(inter)
     union = area_a + area_b - inter
 
-    return (inter / union).reshape(-1, a_sh)
+    temp = torch.transpose((inter / union), 0, 1)
+
+    return temp
+
+def iou1(a: torch.Tensor, b: torch.Tensor):
+    """
+    # Compute the Intersection over Union
+    Note: function iou(a, b) used in match_priors
+    :param a: bounding boxes, dim: (n_items, 4)
+    :param b: bounding boxes, dim: (n_items, 4) or (1, 4) if b is a reference
+    :return: iou value: dim: (n_item)
+    """
+    # [DEBUG] Check if input is the desire shape
+
+    assert a.dim() == 2
+    assert a.shape[1] == 4
+    #print ('b dim',b, b.dim())
+    assert b.dim() == 2
+    assert b.shape[1] == 4
+
+    a = center2corner(a)
+    b = center2corner(b)
+
+
+    a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
+    b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
+
+    x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
+    x_min, y_min = np.minimum(a[:,2],b[:,2]), np.minimum(a[:,3], b[:,3])
+    temp_w = np.maximum((x_min-x_max),0)
+    temp_h = np.maximum((y_min-y_max),0)
+
+    a_and_b = temp_h.cuda()*temp_w.cuda()
+
+    iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
+
+    # [DEBUG] Check if output is the desire shape
+    assert iou.dim() == 1
+    assert iou.shape[0] == a.shape[0]
+    return iou.view(1,a.shape[0])
 
 def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels: torch.Tensor, iou_threshold: float):
     """
@@ -112,12 +151,14 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.shape[1] == 4
 
     # print('gt_bbox',gt_bboxes.dtype)
-    iou_list = iou(prior_bboxes,gt_bboxes)
+    # iou_list = iou(prior_bboxes,gt_bboxes)
 
-    # iou_list = torch.cat((iou_list,iou(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))),0)
+    iou_list = torch.tensor([]).cuda()
+    for i in range(0, gt_bboxes.shape[0]):
+        iou_list = torch.cat((iou_list, iou1(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))), 0)
+
     matched_labels = torch.argmax(iou_list,dim=0)+1.0
     matched_labels.cuda()
-
     gt_idx = torch.argmax(iou_list, dim=1)
     size = gt_idx.shape[0]
     gt_label_idx = torch.arange(size).cuda()
