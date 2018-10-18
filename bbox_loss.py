@@ -56,13 +56,18 @@ class MultiboxLoss(nn.Module):
         # Loss for the classification
         num_classes = confidence.shape[2]
         sel_conf = confidence[sel_flag]
-        conf_loss = F.cross_entropy(sel_conf.reshape(-1, num_classes), gt_class_labels[sel_flag]) / num_pos
+        conf_loss = F.cross_entropy(sel_conf.reshape(-1, num_classes), gt_class_labels[sel_flag])
 
         # Loss for the bounding box prediction
         sel_pred_loc = pred_loc[pos_flag]
         sel_gt_bbox_loc = gt_bbox_loc[pos_flag]
-        loc_huber_loss = F.smooth_l1_loss(sel_pred_loc[2].view(-1, 4), sel_gt_bbox_loc[2].view(-1, 4),
-                                          size_average=False).float().cuda() / num_pos
+        loc_huber_loss = F.smooth_l1_loss(sel_pred_loc.view(-1, 4), sel_gt_bbox_loc.view(-1, 4),
+                                          size_average=False).float().cuda()
         # conf_loss = conf_loss.mean(dim=0)
         # loc_huber_loss = loc_huber_loss.mean(dim=0)
+        #print(conf_loss)
+
+        N = num_pos.data.sum()
+        loc_huber_loss /= N
+        conf_loss /= N
         return conf_loss, loc_huber_loss

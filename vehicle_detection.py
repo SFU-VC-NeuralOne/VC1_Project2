@@ -16,7 +16,7 @@ import pickle
 
 # cityscape_label_dir = '../cityscapes_samples_labels'
 # cityscape_img_dir ='../cityscapes_samples'
-learning_rate = 1e-4
+learning_rate = 1e-2
 Tuning = False
 
 
@@ -30,7 +30,7 @@ pth_path='../'
 
 def load_data(picture_path, label_path):
     data_list = []
-    vehicle_list = ['car', 'truck', 'truckgroup', 'bus', 'busgroup', 'train', 'traingroup', 'tram',
+    vehicle_list = ['car', 'cargroup','truck', 'truckgroup', 'bus', 'busgroup', 'train', 'traingroup', 'tram',
                     'motorcycle', 'motorcyclegroup', 'bicycle', 'bicyclegroup', 'caravan', 'trailer']
     human_list = ['person', 'rider', 'persongroup', 'ridergroup']
     if os.path.isfile('datalist.pkl'):
@@ -78,13 +78,22 @@ def load_data(picture_path, label_path):
 def train(net, train_data_loader, validation_data_loader):
     net.cuda()
     criterion = MultiboxLoss([0.1,0.2])
+    pa_count = 0
     for params in net.base_net.parameters():
+        pa_count+=1
+        #print(pa_count,params.shape)
         params.requires_grad = False
+        if(pa_count>25):
+            break
 
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
     train_losses = []
     valid_losses = []
+    tr_loc_loss=[]
+    tr_conf_loss=[]
+    val_loc_loss=[]
+    val_conf_loss=[]
     best_valid_loss = 1000
 
     max_epochs = 10
@@ -103,20 +112,24 @@ def train(net, train_data_loader, validation_data_loader):
             # compute loss
             train_label = Variable(train_label.cuda())
             loss_cof, loss_loc = criterion(train_cof, train_loc, train_label, train_bbox)
-            loss = loss_cof + loss_cof
-            print('training cof loc loss', loss_cof.view(1,-1), loss_loc.view(1,-1))
-            loss = loss.sum()
+            loss = loss_cof + loss_loc
+            #print('training cof loc loss', loss_cof.data, loss_loc.data)
+            # loss = loss.sum()
             loss.backward()
             optimizer.step()
             train_losses.append((itr, loss))
+            tr_conf_loss.append((itr, loss_cof))
+            tr_loc_loss.append((itr, loss_loc))
 
             # if train_batch_idx % 50 == 0:
-            print('Epoch: %d Itr: %d Loss: %f' % (epoch_idx, itr, loss.item()))
+            print('Epoch: %d Itr: %d total: %f loc: %f cof: %f' % (epoch_idx, itr, loss.item(), loss_loc.item(), loss_cof.item()))
 
             # Run the validation every 200 iteration:
             if train_batch_idx % 50 == 0:
                 net.eval()
                 valid_loss_set = []
+                val_cof_set=[]
+                val_loc_set=[]
                 valid_itr = 0
 
                 for valid_batch_idx, (valid_input, valid_bbox, valid_label) in enumerate(validation_data_loader):
@@ -127,23 +140,36 @@ def train(net, train_data_loader, validation_data_loader):
                     valid_label = Variable(valid_label.cuda())
                     loss_cof, loss_loc = criterion(valid_cof, valid_loc, valid_label, valid_bbox)
                     valid_loss = loss_cof+loss_loc
-                    valid_loss = valid_loss.sum()
-                    print('validation cof loc loss', loss_cof.view(1,-1), loss_loc.view(1,-1))
+                    # valid_loss = valid_loss.sum()
+                    #print('validation cof loc loss', loss_cof.data, loss_loc.data)
                     valid_loss_set.append(valid_loss.item())
-
-                    valid_itr += 1
-                    if valid_itr > 5:
-                        break
+                    val_loc_set.append(loss_loc.item())
+                    val_cof_set.append(loss_cof.item())
+                    #valid_itr += 1
+                    # if valid_itr > 2:
+                    #     break
 
                 # Compute the avg. validation loss
                 avg_valid_loss = np.mean(np.asarray(valid_loss_set))
-                print('Valid Epoch: %d Itr: %d Loss: %f' % (epoch_idx, itr, avg_valid_loss))
+                avg_conf_loss = np.mean(np.asarray(val_cof_set))
+                avg_loc_loss = np.mean(np.asarray(val_loc_set))
+                print('Valid Epoch: %d Itr: %d total: %f loc: %f cof: %f' % (epoch_idx, itr, avg_valid_loss, avg_loc_loss, avg_conf_loss))
                 valid_losses.append((itr, avg_valid_loss))
+                val_conf_loss.append((itr, avg_conf_loss))
+                val_loc_loss.append((itr, avg_loc_loss))
                 if (avg_valid_loss < best_valid_loss):
                     net_state = net.state_dict()  # serialize trained model
                     filename = 'ssd_net.pth'
                     torch.save(net_state, os.path.join(pth_path, filename))
                     best_valid_loss = avg_valid_loss
+        with open('train_loc.pkl', 'wb') as f:
+            pickle.dump(tr_conf_loss, f)
+        with open('train_cof.pkl', 'wb') as f:
+            pickle.dump(tr_loc_loss, f)
+        with open('val_loc.pkl', 'wb') as f:
+            pickle.dump(val_conf_loss, f)
+        with open('val_cof.pkl', 'wb') as f:
+            pickle.dump(val_loc_loss, f)
     train_losses = np.asarray(train_losses).reshape((-1,2))
     valid_losses = np.asarray(valid_losses).reshape((-1,2))
 
@@ -172,17 +198,17 @@ def main():
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=32,
+                                                    batch_size=8,
                                                     shuffle=True,
-                                                    num_workers=4)
+                                                    num_workers=0)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
           len(train_data_loader))
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=32,
+                                                         batch_size=8,
                                                          shuffle=True,
-                                                         num_workers=4)
+                                                         num_workers=0)
     print('Total validation items:', len(validation_dataset))
     if Tuning:
         net_state = torch.load(os.path.join(pth_path, 'ssd_net.pth'))

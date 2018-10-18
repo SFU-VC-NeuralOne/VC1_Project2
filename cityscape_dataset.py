@@ -54,38 +54,41 @@ class CityScapeDataset(Dataset):
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
 
-        augmentation = np.random.randint(0, 4)
-
+        #augmentation = np.random.randint(0, 8)
+        augmentation=None
         if augmentation == 0:
             sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 25) / 10.0)
 
-        """
         # horizontal flip
-        if random.choice ([True,False]) == True:
-            sample_img = sample_img.transpose(Image.FLIP_LEFT_RIGHT)
-            width,height = sample_img.size[:2]
-            flipped_boxes = sample_bboxes.copy()
-            #sample_bboxes = [float(width), float(top), float(left), float(top)] - flipped_bboxes
-            sample_bboxes[:,0] = width-flipped_boxes[:,0]
-            sample_bboxes[:,2] = width-flipped_boxes[:,2]
-        """
-
         if augmentation == 1:
+            sample_img = sample_img.transpose(Image.FLIP_LEFT_RIGHT)
+            width = sample_img.size[0]
+            flipped_boxes = sample_bboxes.copy()
+            # sample_bboxes = [float(width), float(top), float(left), float(top)] - flipped_bboxes
+            sample_bboxes[:, 0] = width - flipped_boxes[:, 2]
+            sample_bboxes[:, 2] = width - flipped_boxes[:, 0]
+            # flipped_boxes = sample_bboxes.copy()
+            # sample_bboxes[:, 0] = flipped_boxes[:, 2]
+            # sample_bboxes[:, 2] = flipped_boxes[:, 0]
+
+        if augmentation == 2:
             if random.choice([True, False]) == True:
                 sample_img = sample_img.filter(ImageFilter.BLUR)
             else:
                 sample_img = sample_img.filter(ImageFilter.SHARPEN)
 
-        # if random.choice([True, False]) == True:
-        #     w, h = sample_img.size[:2]
-        #     top = np.random.randint(0, 200)
-        #     bottom = np.random.randint(h - 200, h)
-        #     left = np.random.randint(0, 200)
-        #     right = np.random.randint(w - 200, w)
-        #
-        #     sample_img = sample_img.crop((left, top, right, bottom))
-        #
-        #     sample_bboxes = sample_bboxes - [float(left), float(top), float(left), float(top)]
+        if augmentation == 3:
+            w, h = sample_img.size[:2]
+            left = np.random.randint(0, np.min(sample_bboxes[:, 0])-10)
+            top = np.random.randint(0, np.min(sample_bboxes[:, 1])-10)
+            right = np.random.randint(np.min(sample_bboxes[:, 2])+10, w)
+            bottom = np.random.randint(np.min(sample_bboxes[:, 3])+10, h)
+
+            sample_img = sample_img.crop((left, top, right, bottom))
+
+            sample_bboxes = sample_bboxes - [float(left), float(top), float(left), float(top)]
+
+
         # 2. Normalize the image with self.mean and self.std
         img = sample_img.resize((300, 300))
         img_array = np.asarray(img)

@@ -136,7 +136,7 @@ class SSD(nn.Module):
 
         # Todo: implement run the backbone network from [11 to 13] and compute the corresponding bbox loc and confidence
         y = module_util.forward_from(self.base_net.base_net, self.base_output_layer_indices[0], self.base_output_layer_indices[1] + 1, y)
-        print('y', y.shape)
+        #print('y', y.shape)
         confidence, loc = self.feature_to_bbbox(self.loc_regressor[1], self.classifier[1], y)
         confidence_list.append(confidence)
         loc_list.append(loc)
