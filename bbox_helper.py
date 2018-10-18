@@ -151,11 +151,11 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.shape[1] == 4
 
     # print('gt_bbox',gt_bboxes.dtype)
-    # iou_list = iou(prior_bboxes,gt_bboxes)
+    iou_list = iou(prior_bboxes,gt_bboxes)
 
-    iou_list = torch.tensor([]).cuda()
-    for i in range(0, gt_bboxes.shape[0]):
-        iou_list = torch.cat((iou_list, iou1(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))), 0)
+    # iou_list = torch.tensor([]).cuda()
+    # for i in range(0, gt_bboxes.shape[0]):
+    #     iou_list = torch.cat((iou_list, iou1(prior_bboxes, torch.reshape(gt_bboxes[i], (-1, 4)))), 0)
 
     matched_labels = torch.argmax(iou_list,dim=0)+1.0
     matched_labels.cuda()
@@ -183,19 +183,25 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     # print('ground truth bbox',matched_boxes[gt_idx])
     #zero out labels below 0.5
     zero = torch.zeros(iou_list.shape).cuda()
-    iou_list = torch.where(iou_list < 0.5, zero, iou_list)
+    iou_list = torch.where(iou_list < iou_threshold, zero, iou_list)
     # print('ground truth matched bbox', matched_labels[gt_idx])
     zero_index = (torch.max(iou_list, dim=0)[0] == 0).nonzero()
     matched_labels[zero_index.view(1, -1)] = 0
     matched_boxes[zero_index.view(1, -1)] = torch.Tensor([0.,0.,0.,0.]).cuda()
-    # print('ground truth matched bbox', matched_labels[gt_idx])
+    # print('gt labels should be',np.where(matched_labels>0))
     possitive_sample_idx = matched_labels.nonzero()
     temp = matched_labels[possitive_sample_idx.view(1, -1)]
-    # print('possitive sample dtype',temp)
-
+    # print('this is 2628 before loc:', matched_boxes[2628])
+    # # print('possitive sample dtype',temp)
+    # print('2628 matches to', matched_labels[2628])
 
     matched_boxes[possitive_sample_idx.view(1, -1)] = bbox2loc(gt_bboxes[matched_labels[possitive_sample_idx.view(1, -1)] - 1], prior_bboxes[possitive_sample_idx.view(1, -1)])
     matched_labels[possitive_sample_idx.view(1, -1)] = gt_labels[matched_labels[possitive_sample_idx.view(1, -1)] - 1].long()
+    # print('this is 2628 after:', matched_boxes[2628])
+    # print('if i recall it back', loc2bbox(matched_boxes[2628], prior_bboxes[2628]))
+    # print('the matched gt is', gt_bboxes[7])
+
+
     # for i in range(gt_bboxes.shape[0]):
     #     matched_boxes_for_this = ((matched_labels[possitive_sample_idx.view(1, -1)] - 1) ==i).nonzero()
     #     matched_boxes[matched_boxes_for_this] = bbox2loc(gt_bboxes[i], prior_bboxes[matched_boxes_for_this])

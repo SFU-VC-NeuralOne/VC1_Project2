@@ -54,8 +54,8 @@ class CityScapeDataset(Dataset):
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
 
-        augmentation = np.random.randint(0, 6)
-        # augmentation=1
+        # augmentation = np.random.randint(0, 5)
+        augmentation=None
         if augmentation == 0:
             sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 25) / 10.0)
 
@@ -77,18 +77,21 @@ class CityScapeDataset(Dataset):
             else:
                 sample_img = sample_img.filter(ImageFilter.SHARPEN)
 
-        if augmentation == 3:
-            w, h = sample_img.size[:2]
-            left = np.random.randint(0, np.min(sample_bboxes[:, 0])-np.min(sample_bboxes[:, 0])/5)
-            top = np.random.randint(0, np.min(sample_bboxes[:, 1])-np.min(sample_bboxes[:, 1])/5)
-            right = np.random.randint(np.min(sample_bboxes[:, 2])+np.min(sample_bboxes[:, 2])/5, w)
-            bottom = np.random.randint(np.min(sample_bboxes[:, 3])+np.min(sample_bboxes[:, 3])/5, h)
-
-            sample_img = sample_img.crop((left, top, right, bottom))
-            # print(sample_bboxes[0])
-            # print("left", left)
-            sample_bboxes = sample_bboxes - [float(left), float(top), float(left), float(top)]
-            # print(sample_bboxes[0])
+        # if augmentation == 3:
+        #     w, h = sample_img.size[:2]
+        #     left = np.random.randint(0, np.min(sample_bboxes[:, 0])-(np.min(sample_bboxes[:, 0])/5).astype(int))
+        #     # print("left---------------",left)
+        #     top = np.random.randint(0, np.min(sample_bboxes[:, 1])-(np.min(sample_bboxes[:, 1])/5).astype(int))
+        #     right = np.random.randint(np.max(sample_bboxes[:, 2])+((w-np.max(sample_bboxes[:, 2]))/5).astype(int), w)
+        #     # print("right--------------",right)
+        #     bottom = np.random.randint( np.max(sample_bboxes[:, 3])+((h-np.max(sample_bboxes[:, 3]))/5).astype(int), h)
+        #     # print("bottom-------------",bottom)
+        #
+        #     sample_img = sample_img.crop((left, top, right, bottom))
+        #     # print(sample_bboxes[0])
+        #     # print("left", left)
+        #     sample_bboxes = sample_bboxes - [float(left), float(top), float(left), float(top)]
+        #     # print(sample_bboxes[0])
 
 
 

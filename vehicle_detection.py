@@ -15,8 +15,8 @@ from ssd_net import SSD
 import pickle
 import torch.nn.functional as F
 
-cityscape_label_dir = '../cityscapes_samples_labels'
-cityscape_img_dir ='../cityscapes_samples'
+# cityscape_label_dir = '../cityscapes_samples_labels'
+# cityscape_img_dir ='../cityscapes_samples'
 learning_rate = 1e-3
 Tuning = False
 
@@ -24,8 +24,8 @@ Tuning = False
 # cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
 # cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
 
-# cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
-# cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
 
 pth_path='../'
 
@@ -97,7 +97,7 @@ def train(net, train_data_loader, validation_data_loader):
     val_conf_loss=[]
     best_valid_loss = 1000
 
-    max_epochs = 10
+    max_epochs = 15
     itr = 0
 
     for epoch_idx in range(0, max_epochs):
@@ -146,7 +146,7 @@ def train(net, train_data_loader, validation_data_loader):
                     # temp_valid_label=temp_valid_label.detach().cpu().numpy()
                     # pred_cof = np.max(temp_loss_cof,axis = 0)
                     #print(np.sum(np.where(temp_valid_label == pred_cof)))
-                    print(temp_loss_cof)
+                    # print(F.softmax(valid_cof[0]))
                     # print(np.sum(len(temp_valid_label)))
                     valid_loss = loss_cof+loss_loc
                     # valid_loss = valid_loss.sum()
@@ -155,7 +155,7 @@ def train(net, train_data_loader, validation_data_loader):
                     val_loc_set.append(loss_loc.item())
                     val_cof_set.append(loss_cof.item())
                     valid_itr += 1
-                    if valid_itr > 64:
+                    if valid_itr > 5:
                         break
 
                 # Compute the avg. validation loss
@@ -207,7 +207,7 @@ def main():
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=8,
+                                                    batch_size=64,
                                                     shuffle=True,
                                                     num_workers=0)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
@@ -215,7 +215,7 @@ def main():
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=8,
+                                                         batch_size=32,
                                                          shuffle=True,
                                                          num_workers=0)
     print('Total validation items:', len(validation_dataset))
