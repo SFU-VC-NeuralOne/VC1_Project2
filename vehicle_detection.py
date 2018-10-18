@@ -14,17 +14,17 @@ from bbox_loss import MultiboxLoss
 from ssd_net import SSD
 import pickle
 
-# cityscape_label_dir = '../cityscapes_samples_labels'
-# cityscape_img_dir ='../cityscapes_samples'
-learning_rate = 1e-2
+cityscape_label_dir = '../cityscapes_samples_labels'
+cityscape_img_dir ='../cityscapes_samples'
+learning_rate = 1e-3
 Tuning = False
 
 
 # cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
 # cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
 
-cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
-cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+# cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+# cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
 
 pth_path='../'
 
@@ -139,15 +139,23 @@ def train(net, train_data_loader, validation_data_loader):
                     # compute loss
                     valid_label = Variable(valid_label.cuda())
                     loss_cof, loss_loc = criterion(valid_cof, valid_loc, valid_label, valid_bbox)
+                    # temp_loss_cof = valid_cof.clone()
+                    # temp_loss_cof=temp_loss_cof.detach().cpu().numpy()
+                    # temp_valid_label = valid_label.clone()
+                    # temp_valid_label=temp_valid_label.detach().cpu().numpy()
+                    # pred_cof = np.max(temp_loss_cof,axis = 0)
+                    #print(np.sum(np.where(temp_valid_label == pred_cof)))
+                    # print(temp_loss_cof)
+                    # print(np.sum(len(temp_valid_label)))
                     valid_loss = loss_cof+loss_loc
                     # valid_loss = valid_loss.sum()
                     #print('validation cof loc loss', loss_cof.data, loss_loc.data)
                     valid_loss_set.append(valid_loss.item())
                     val_loc_set.append(loss_loc.item())
                     val_cof_set.append(loss_cof.item())
-                    #valid_itr += 1
-                    # if valid_itr > 2:
-                    #     break
+                    valid_itr += 1
+                    if valid_itr > 64:
+                        break
 
                 # Compute the avg. validation loss
                 avg_valid_loss = np.mean(np.asarray(valid_loss_set))

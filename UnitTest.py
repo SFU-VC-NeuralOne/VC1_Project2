@@ -229,8 +229,8 @@ class TestDataLoad(unittest.TestCase):
         #test_list = load_data('../Debugimage', '../Debuglabel')
         test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
         print(test_list)
-#        gt_bbox = np.asarray(test_list[0]['label'][0])*[600/2048, 300/1024, 600/2048, 300/1024]
-       # print('ground truth from file:', test_list[0]['label'][0])
+        gt_bbox = np.asarray(test_list[0]['label'][1])*[1200/2048, 600/1024, 1200/2048, 600/1024]
+        print('ground truth from file:', test_list[0]['label'][0])
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=4,
@@ -259,14 +259,14 @@ class TestDataLoad(unittest.TestCase):
         print('matched bbox ======', bbox_corner)
         for i in range(0,bbox_corner.shape[0]):
             # print('i point', bbox_corner[i, 0]*600, bbox_corner[i, 1]*300,(bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300)
-            rect = patches.Rectangle((bbox_corner[i, 0]*1200, bbox_corner[i, 1]*600), (bbox_corner[i, 2]-bbox_corner[i, 0])*1200, (bbox_corner[i, 3]-bbox_corner[i, 1])*600, linewidth=1, edgecolor='r', facecolor='none') # Create a Rectangle patch
+            rect = patches.Rectangle((bbox_corner[i, 0]*1200, bbox_corner[i, 1]*600), (bbox_corner[i, 2]-bbox_corner[i, 0])*1200, (bbox_corner[i, 3]-bbox_corner[i, 1])*600, linewidth=2, edgecolor='r', facecolor='none') # Create a Rectangle patch
             ax.add_patch(rect) # Add the patch to the Axes
         #     print(i)
 
         # for i in range(0, gt_bbox.shape[0]):
         #     rect = patches.Rectangle((gt_bbox[i][0], gt_bbox[i][1]),
         #                              (gt_bbox[i][2] - gt_bbox[i][0]),
-        #                              (gt_bbox[i][3] - gt_bbox[i][1]), linewidth=2, edgecolor='g',
+        #                              (gt_bbox[i][3] - gt_bbox[i][1]), linewidth=1, edgecolor='g',
         #                              facecolor='none')  # Create a Rectangle patch
         #     ax.add_patch(rect)  # Add the patch to the Axes
 
@@ -391,7 +391,16 @@ class TestIntercetion(unittest.TestCase):
                    box_b[:, 1])).unsqueeze(0).expand_as(inter)
         union = area_a + area_b - inter
         # print(inter)
-        temp = (inter / union).reshape(-1,A)
+        temp = torch.transpose((inter / union), 0, 1)
         print(temp)
         print(inter / union)
         print(iou(box_a, box_b))
+
+class TestBbox2Loc(unittest.TestCase):
+    def test_bbox2loc(self):
+        prior  = torch.Tensor([[1,2,3,4], [2,0,3,4], [1,5,6,7]])
+        gt = torch.Tensor([[2,6,7,8], [5,6,7,8], [2,0,4,8]])
+
+        temp = bbox2loc(gt,prior)
+        back = loc2bbox(temp, prior)
+        print(back)
