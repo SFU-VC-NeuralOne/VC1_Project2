@@ -167,7 +167,7 @@ class SSD(nn.Module):
 
         if not self.training:
             # If in testing/evaluating mode, normalize the output with Softmax
-            confidences = F.softmax(confidences, dim=1)
+            confidences = F.softmax(confidences, dim=2)
 
         return confidences, locations
 

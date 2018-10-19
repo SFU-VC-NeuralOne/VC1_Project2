@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 import torch
 import mobilenet
 from util import module_util
-from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc, center2corner, corner2center, loc2bbox
+from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc, center2corner, corner2center, loc2bbox, \
+    nms_bbox
 from cityscape_dataset import CityScapeDataset
 from skimage.transform import resize
 
@@ -450,17 +451,21 @@ class TestRabdom(unittest.TestCase):
         test_net = ssd_net.SSD(3)
         test_net_state = torch.load(os.path.join(lfw_dataset_dir, 'ssd_net.pth'))
         test_net.load_state_dict(test_net_state)
+        #test_net.eval()
         idx, (img, bbox, label) = next(enumerate(test_data_loader))
         pred_cof, pred_loc = test_net.forward(img)
-        print(pred_loc.shape)
+        pred_loc = pred_loc[0]
+        pred_cof = pred_cof[0]
+
         import torch.nn.functional as F
-        pred_loc = pred_loc.detach()
-        bbox_center = loc2bbox(pred_loc[0], pp)
-        pred_cof =F.softmax(pred_cof[0])
-        ind = np.where(pred_cof>0.7)
-        pred_cof = F.softmax(pred_cof[ind[0]])
-        bbox_center = bbox_center[ind[0]]
-        print(ind,pred_cof)
+        test_cof_score = F.softmax(pred_cof)
+        print(test_cof_score)
+        sel_bboxes = nms_bbox(pred_loc, test_cof_score,overlap_threshold=0.5, prob_threshold=0.45)
+        print(pred_loc.shape)
+
+        sel_bboxes = sel_bboxes.detach()
+        bbox_center = loc2bbox(sel_bboxes, pp)
+
         img = img[0].cpu().numpy()
         img = img.reshape((300, 300, 3))
         img = (img * 128 + np.asarray([[127, 127, 127]])) / 255
