@@ -89,8 +89,8 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     area_b = ((b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])).unsqueeze(0).expand_as(inter)
     union = area_a + area_b - inter
 
-    #temp = torch.transpose((inter / union), 0, 1)
-    temp = inter/union
+    temp = torch.transpose((inter / union), 0, 1)
+    #temp = inter/union
     return temp
 
 def iou1(a: torch.Tensor, b: torch.Tensor):
@@ -151,7 +151,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.shape[1] == 4
 
     # print('gt_bbox',gt_bboxes.dtype)
-    iou_list = iou(gt_bboxes,prior_bboxes)
+    iou_list = iou(prior_bboxes,gt_bboxes)
 
     # iou_list = torch.tensor([]).cuda()
     # for i in range(0, gt_bboxes.shape[0]):
@@ -278,7 +278,7 @@ def nms_bbox(bbox_loc, bbox_confid_scores, overlap_threshold=0.5, prob_threshold
     assert bbox_confid_scores.shape[0] == bbox_loc.shape[0]
 
     sel_bbox = torch.tensor([[0., 0., 0., 0.]])
-    sel_ind = []
+    sel_ind = np.array([]).reshape((1,-1))
     _, indices = torch.max(bbox_confid_scores, 0)
     # print(indices)
 
@@ -288,12 +288,12 @@ def nms_bbox(bbox_loc, bbox_confid_scores, overlap_threshold=0.5, prob_threshold
         # print(class_idx)
         # the max probability bbox:
         temp_bbox = bbox_loc[indices[class_idx]]
-        sel_ind.append(indices[class_idx])
+        sel_ind = np.concatenate((sel_ind.reshape((1,-1)),np.asarray(indices[class_idx]).reshape((1,-1))),axis=1)
         temp_bbox = temp_bbox.view(-1,4)
         sel_bbox = torch.cat((sel_bbox,temp_bbox),0)
 
         #eliminating bbox with classes score less than 0.6
-        bbox_class_flag_index = np.where(bbox_confid_scores[:,class_idx] >= prob_threshold)
+        bbox_class_flag_index = np.where(bbox_confid_scores[:,class_idx] >= prob_threshold)[0]
         bbox_class_flag = bbox_confid_scores[:,class_idx] >= prob_threshold
         selected_class_bbox = bbox_loc[bbox_class_flag]
         #print('selected flag in nums', selected_class_bbox.sum())
@@ -302,9 +302,12 @@ def nms_bbox(bbox_loc, bbox_confid_scores, overlap_threshold=0.5, prob_threshold
         print("intersection",intersection)
         not_overlap_flag = intersection<overlap_threshold
         print('nof',not_overlap_flag, not_overlap_flag.shape)
-        print('bbcl',bbox_class_flag_index[0],  len(bbox_class_flag_index[0]))
-        new_index = np.asarray(bbox_class_flag_index[0])*np.asarray(not_overlap_flag)
-        sel_ind.append(new_index.nonzero())
+        print('bbcl',bbox_class_flag_index)
+        bbox_class_flag_index = np.asarray(bbox_class_flag_index).reshape(-1,1)
+        not_overlap_flag = np.asarray(not_overlap_flag)
+        new_index = bbox_class_flag_index * not_overlap_flag
+        new_index = new_index[new_index.nonzero()[0]].reshape(1,-1)
+        sel_ind = np.concatenate((sel_ind.reshape((1,-1)), new_index.reshape(1,-1)),axis=1)
         print('selected box in num', len(sel_ind))
         #not_overlapping_bboxes = selected_class_bbox[not_overlap_flag[0]]
 

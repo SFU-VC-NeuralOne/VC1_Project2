@@ -69,5 +69,5 @@ class MultiboxLoss(nn.Module):
 
         N = num_pos.data.sum()
         loc_huber_loss /= N
-        conf_loss /= N
+        conf_loss = conf_loss * 1000 / N
         return conf_loss, loc_huber_loss

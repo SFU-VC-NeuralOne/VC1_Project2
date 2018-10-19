@@ -97,7 +97,7 @@ def train(net, train_data_loader, validation_data_loader):
     val_conf_loss=[]
     best_valid_loss = 1000
 
-    max_epochs = 15
+    max_epochs = 2
     itr = 0
 
     for epoch_idx in range(0, max_epochs):
@@ -172,13 +172,13 @@ def train(net, train_data_loader, validation_data_loader):
                     torch.save(net_state, os.path.join(pth_path, filename))
                     best_valid_loss = avg_valid_loss
         with open('train_loc.pkl', 'wb') as f:
-            pickle.dump(tr_conf_loss, f)
-        with open('train_cof.pkl', 'wb') as f:
             pickle.dump(tr_loc_loss, f)
+        with open('train_cof.pkl', 'wb') as f:
+            pickle.dump(tr_conf_loss, f)
         with open('val_loc.pkl', 'wb') as f:
-            pickle.dump(val_conf_loss, f)
-        with open('val_cof.pkl', 'wb') as f:
             pickle.dump(val_loc_loss, f)
+        with open('val_cof.pkl', 'wb') as f:
+            pickle.dump(val_conf_loss, f)
     train_losses = np.asarray(train_losses).reshape((-1,2))
     valid_losses = np.asarray(valid_losses).reshape((-1,2))
 
