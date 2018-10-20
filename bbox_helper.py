@@ -12,12 +12,12 @@ def generate_prior_bboxes(prior_layer_cfg):
     Use VGG_SSD 300x300 as example:
     Feature map dimension for each output layers:
        Layer    | Map Dim (h, w) | Single bbox size that covers in the original image
-    1. Conv5    | (38x38)        | (30x30) (unit. pixels)
-    2. Conv11    | (19x19)        | (60x60)
-    3. Conv14_2  | (10x10)        | (111x111)
-    4. Conv15_2  | (5x5)          | (162x162)
-    5. Conv16_2 | (3x3)          | (213x213)
-    6. Conv17_2 | (1x1)          | (264x264)
+    1. Conv5    | (38x38)        | (60x30) (unit. pixels)
+    2. Conv11    | (19x19)        | (105x60)
+    3. Conv14_2  | (10x10)        | (150x111)
+    4. Conv15_2  | (5x5)          | (195x162)
+    5. Conv16_2 | (3x3)          | (240x213)
+    6. Conv17_2 | (1x1)          | (285x264)
 
     NOTE: The setting may be different using MobileNet v3, you have to set your own implementation.
     Tip: see the reference: 'Choosing scales and aspect ratios for default boxes' in original paper page 5.
@@ -25,7 +25,7 @@ def generate_prior_bboxes(prior_layer_cfg):
     :return prior bounding boxes with form of (cx, cy, w, h), where the value range are from 0 to 1, dim (1, num_priors, 4)
     """
 
-    sk_list = [0.1, 0.2, 0.37, 0.54, 0.71, 0.88, 1.05]
+    sk_list = [0.2, 0.35, 0.5, 0.65, 0.8, 0.95, 1.1]
 
     priors_bboxes = []
     for feat_level_idx in range(0, len(prior_layer_cfg)):               # iterate each layers
@@ -90,7 +90,7 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     union = area_a + area_b - inter
 
     temp = torch.transpose((inter / union), 0, 1)
-    #temp = inter/union
+    # temp = inter/union
     return temp
 
 def iou1(a: torch.Tensor, b: torch.Tensor):
@@ -234,33 +234,8 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
 
     return matched_boxes, matched_labels
 
-# def match_priors1(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels: torch.Tensor, iou_threshold: float):
-#     overlaps = iou(prior_bboxes,gt_bboxes)
-#         truths,
-#         point_form(priors)
-#     )
-#     # (Bipartite Matching)
-#     # [1,num_objects] best prior for each ground truth
-#     best_prior_overlap, best_prior_idx = overlaps.max(1, keepdim=True)
-#     # [1,num_priors] best ground truth for each prior
-#     best_truth_overlap, best_truth_idx = overlaps.max(0, keepdim=True)
-#     best_truth_idx.squeeze_(0)
-#     best_truth_overlap.squeeze_(0)
-#     best_prior_idx.squeeze_(1)
-#     best_prior_overlap.squeeze_(1)
-#     best_truth_overlap.index_fill_(0, best_prior_idx, 2)  # ensure best prior
-#     # TODO refactor: index  best_prior_idx with long tensor
-#     # ensure every gt matches with its prior of max overlap
-#     for j in range(best_prior_idx.size(0)):
-#         best_truth_idx[best_prior_idx[j]] = j
-#     matches = truths[best_truth_idx]  # Shape: [num_priors,4]
-#     conf = labels[best_truth_idx] + 1  # Shape: [num_priors]
-#     conf[best_truth_overlap < threshold] = 0  # label as background
-#     loc = encode(matches, priors, variances)
-#     loc_t[idx] = loc  # [num_priors,4] encoded offsets to learn
-#     conf_t[idx] = conf  # [num_priors] top class label for each prior
 
-def nms_bbox(bbox_loc, bbox_confid_scores, overlap_threshold=0.5, prob_threshold=0.6):
+def nms_bbox(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_threshold=0.6):
     """
     Non-maximum suppression for computing best overlapping bounding box for a object
     Use this function when testing the samples.
@@ -280,46 +255,55 @@ def nms_bbox(bbox_loc, bbox_confid_scores, overlap_threshold=0.5, prob_threshold
     sel_bbox = torch.tensor([[0., 0., 0., 0.]])
     sel_ind = np.array([]).reshape((1,-1))
     _, indices = torch.max(bbox_confid_scores, 0)
-    # print(indices)
+    print("indices", indices)
+
+    bbox_loc = loc2bbox(bbox_loc, prior)
+    bbox_loc = center2corner(bbox_loc)
 
     # Todo: implement nms for filtering out the unnecessary bounding boxes
     num_classes = bbox_confid_scores.shape[1]
     for class_idx in range(1, num_classes):
-        # print(class_idx)
-        # the max probability bbox:
-        temp_bbox = bbox_loc[indices[class_idx]]
-        sel_ind = np.concatenate((sel_ind.reshape((1,-1)),np.asarray(indices[class_idx]).reshape((1,-1))),axis=1)
-        temp_bbox = temp_bbox.view(-1,4)
-        sel_bbox = torch.cat((sel_bbox,temp_bbox),0)
+        print(indices[class_idx])
+        print("First thing first : ",bbox_confid_scores[indices[class_idx]])
+        if bbox_confid_scores[indices[class_idx]][class_idx] >= prob_threshold :
+            # print(class_idx)
+            # the max probability bbox:
+            temp_bbox = bbox_loc[indices[class_idx]]
+            # temp_bbox = loc2bbox(temp_bbox)
+            sel_ind = np.concatenate((sel_ind.reshape((1,-1)),np.asarray(indices[class_idx]).reshape((1,-1))),axis=1)
+            temp_bbox = temp_bbox.view(-1,4)
+            sel_bbox = torch.cat((sel_bbox,temp_bbox),0)
 
-        #eliminating bbox with classes score less than 0.6
-        bbox_class_flag_index = np.where(bbox_confid_scores[:,class_idx] >= prob_threshold)[0]
-        bbox_class_flag = bbox_confid_scores[:,class_idx] >= prob_threshold
-        selected_class_bbox = bbox_loc[bbox_class_flag]
-        #print('selected flag in nums', selected_class_bbox.sum())
-        #eliminate overlapping bboxes
-        intersection = iou(selected_class_bbox,temp_bbox)
-        print("intersection",intersection)
-        not_overlap_flag = intersection<overlap_threshold
-        print('nof',not_overlap_flag, not_overlap_flag.shape)
-        print('bbcl',bbox_class_flag_index)
-        bbox_class_flag_index = np.asarray(bbox_class_flag_index).reshape(-1,1)
-        not_overlap_flag = np.asarray(not_overlap_flag)
-        new_index = bbox_class_flag_index * not_overlap_flag
-        new_index = new_index[new_index.nonzero()[0]].reshape(1,-1)
-        sel_ind = np.concatenate((sel_ind.reshape((1,-1)), new_index.reshape(1,-1)),axis=1)
-        print('selected box in num', len(sel_ind))
-        #not_overlapping_bboxes = selected_class_bbox[not_overlap_flag[0]]
+            # eliminating bbox with classes score less than 0.6
+            bbox_class_flag_index = np.where(bbox_confid_scores[:,class_idx] >= prob_threshold)[0]
+            bbox_class_flag = bbox_confid_scores[:,class_idx] >= prob_threshold
+            if (bbox_class_flag.sum()) >= 1 :
+                selected_class_bbox = bbox_loc[bbox_class_flag]
+                # print('selected flag in nums', selected_class_bbox.sum())
+                # eliminate overlapping bboxes
+                intersection = iou(selected_class_bbox,temp_bbox)
+                print("intersection",intersection)
+                not_overlap_flag = intersection<overlap_threshold
+                print('nof',not_overlap_flag, not_overlap_flag.shape)
+                print('bbcl',bbox_class_flag_index)
+                bbox_class_flag_index = np.asarray(bbox_class_flag_index).reshape(-1,1)
+                not_overlap_flag = np.asarray(not_overlap_flag)
+                new_index = bbox_class_flag_index * not_overlap_flag
+                new_index = new_index[new_index.nonzero()[0]].reshape(1,-1)
+                sel_ind = np.concatenate((sel_ind.reshape((1,-1)), new_index.reshape(1,-1)),axis=1)
+                print('selected box in num', len(sel_ind))
+            #not_overlapping_bboxes = selected_class_bbox[not_overlap_flag[0]]
 
-        #sel_bbox = torch.cat((sel_bbox,not_overlapping_bboxes),0)
-        # Tip: use prob_threshold to set the prior that has higher scores and filter out the low score items for fast
-        # computation
+            #sel_bbox = torch.cat((sel_bbox,not_overlapping_bboxes),0)
+            # Tip: use prob_threshold to set the prior that has higher scores and filter out the low score items for fast
+            # computation
 
         pass
 
     sel_bbox = sel_bbox[1:]
     print('selected box in num', sel_ind)
     return sel_ind
+
 
 ''' Bounding Box Conversion --------------------------------------------------------------------------------------------
 '''
@@ -396,3 +380,75 @@ def corner2center(corner):
     """
     return torch.cat([corner[..., :2]/2 + corner[..., 2:]/2,
                       corner[..., 2:] - corner[..., :2]],dim=-1)
+
+def area_of(left_top, right_bottom) -> torch.Tensor:
+    """Compute the areas of rectangles given two corners.
+    Args:
+        left_top (N, 2): left top corner.
+        right_bottom (N, 2): right bottom corner.
+    Returns:
+        area (N): return the area.
+    """
+    hw = torch.clamp(right_bottom - left_top, min=0.0)
+    return hw[..., 0] * hw[..., 1]
+
+
+def iou_of(boxes0, boxes1, eps=1e-5):
+    """Return intersection-over-union (Jaccard index) of boxes.
+    Args:
+        boxes0 (N, 4): ground truth boxes.
+        boxes1 (N or 1, 4): predicted boxes.
+        eps: a small number to avoid 0 as denominator.
+    Returns:
+        iou (N): IoU values.
+    """
+    overlap_left_top = torch.max(boxes0[..., :2], boxes1[..., :2])
+    overlap_right_bottom = torch.min(boxes0[..., 2:], boxes1[..., 2:])
+
+    overlap_area = area_of(overlap_left_top, overlap_right_bottom)
+    area0 = area_of(boxes0[..., :2], boxes0[..., 2:])
+    area1 = area_of(boxes1[..., :2], boxes1[..., 2:])
+    return overlap_area / (area0 + area1 - overlap_area + eps)
+
+
+def assign_priors(gt_boxes, gt_labels, corner_form_priors,
+                  iou_threshold):
+    """Assign ground truth boxes and targets to priors.
+    Args:
+        gt_boxes (num_targets, 4): ground truth boxes.
+        gt_labels (num_targets): labels of targets.
+        priors (num_priors, 4): corner form priors
+    Returns:
+        boxes (num_priors, 4): real values for priors.
+        labels (num_priros): labels for priors.
+    """
+    # size: num_priors x num_targets
+    ious = iou_of(gt_boxes.unsqueeze(0), corner_form_priors.unsqueeze(1))
+    # size: num_priors
+    best_target_per_prior, best_target_per_prior_index = ious.max(1)
+    # size: num_targets
+    best_prior_per_target, best_prior_per_target_index = ious.max(0)
+
+    for target_index, prior_index in enumerate(best_prior_per_target_index):
+        best_target_per_prior_index[prior_index] = target_index
+    # 2.0 is used to make sure every target has a prior assigned
+    best_target_per_prior.index_fill_(0, best_prior_per_target_index, 2)
+    # size: num_priors
+    labels = gt_labels[best_target_per_prior_index]
+    labels[best_target_per_prior < iou_threshold] = 0  # the backgournd id
+    boxes = gt_boxes[best_target_per_prior_index]
+
+    # boxes = corner2center(boxes)
+    # center_from_priors = corner2center(corner_form_priors)
+    # locations = bbox2loc(boxes, center_from_priors)
+
+    return boxes, labels
+
+def convert_boxes_to_locations(center_form_boxes, center_form_priors, center_variance, size_variance):
+    # priors can have one dimension less
+    if center_form_priors.dim() + 1 == center_form_boxes.dim():
+        center_form_priors = center_form_priors.unsqueeze(0)
+    return torch.cat([
+        (center_form_boxes[..., :2] - center_form_priors[..., :2]) / center_form_priors[..., 2:] / center_variance,
+        torch.log(center_form_boxes[..., 2:] / center_form_priors[..., 2:]) / size_variance
+    ], dim=center_form_boxes.dim() - 1)

@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import torch
 import mobilenet
 from util import module_util
-from bbox_helper import generate_prior_bboxes, iou, match_priors, bbox2loc, center2corner, corner2center, loc2bbox, \
-    nms_bbox
+from bbox_helper import generate_prior_bboxes, match_priors, bbox2loc, center2corner, corner2center, loc2bbox, \
+    nms_bbox, iou
 from cityscape_dataset import CityScapeDataset
 from skimage.transform import resize
 
@@ -212,31 +212,30 @@ class TestDataLoad(unittest.TestCase):
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
         torch.set_printoptions(precision=10)
         prior_layer_cfg = [
-            # Example:
-            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+            {'layer_name': 'Conv5', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (10, 10), 'bbox_size': (105, 105),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (5, 5), 'bbox_size': (150, 150),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (3, 3), 'bbox_size': (195, 195),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (2, 2), 'bbox_size': (240, 240),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (285, 285),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
         ]
         pp = generate_prior_bboxes(prior_layer_cfg)
 
 
-        # test_list = load_data('../Debugimage', '../Debuglabel')
-        test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
+        test_list = load_data('../Debugimage', '../Debuglabel')
+        # test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
         print(test_list)
         gt_bbox = np.asarray(test_list[0]['label'][1])*[1200/2048, 600/1024, 1200/2048, 600/1024]
         print('ground truth from file:', test_list[0]['label'][0])
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
-                                                        batch_size=4,
+                                                        batch_size=8,
                                                         shuffle=True,
                                                         num_workers=0)
         idx, (img, bbox, label) = next(enumerate(test_data_loader))
@@ -244,7 +243,8 @@ class TestDataLoad(unittest.TestCase):
         label= label[0]
         print(bbox.shape, label.shape)
 
-        print('matched label', label[np.where(label > 0)])
+        print('matched label', label[np.where(label > 0)], np.where(label > 0))
+        print('first bbox from data_set:', bbox[0], label[0])
         bbox_center = loc2bbox(bbox, pp)
         bbox_corner = center2corner(bbox_center)
         img = img[0].cpu().numpy()
@@ -292,19 +292,18 @@ class TestDataLoad(unittest.TestCase):
 class TestCorner2(unittest.TestCase):
     def test_corner2(self):
         prior_layer_cfg = [
-            # Example:
-            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+            {'layer_name': 'Conv5', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (10, 10), 'bbox_size': (105, 105),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (5, 5), 'bbox_size': (150, 150),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (3, 3), 'bbox_size': (195, 195),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (2, 2), 'bbox_size': (240, 240),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (285, 285),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
         ]
         pp = generate_prior_bboxes(prior_layer_cfg)
         print('original',pp[0])
@@ -422,19 +421,18 @@ class TestRabdom(unittest.TestCase):
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
         torch.set_printoptions(precision=10)
         prior_layer_cfg = [
-            # Example:
-            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+            {'layer_name': 'Conv5', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (10, 10), 'bbox_size': (105, 105),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (5, 5), 'bbox_size': (150, 150),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (3, 3), 'bbox_size': (195, 195),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (2, 2), 'bbox_size': (240, 240),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (285, 285),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
         ]
         pp = generate_prior_bboxes(prior_layer_cfg)
 
@@ -460,19 +458,19 @@ class TestRabdom(unittest.TestCase):
         import torch.nn.functional as F
         test_cof_score = F.softmax(pred_cof)
         print(test_cof_score)
-        sel_idx = nms_bbox(pred_loc, test_cof_score,overlap_threshold=0.5, prob_threshold=0.5)
+        sel_idx = nms_bbox(pred_loc.detach(), pp, test_cof_score.detach(),overlap_threshold=0.5, prob_threshold=0.25)
         # sel_idx = np.flatten(sel_idx)
-        print('select idx',sel_idx)
+        # print('select idx, keep',sel_idx, keep)
         sel_bboxes = pred_loc.detach()[sel_idx]
         bbox_center = loc2bbox(sel_bboxes, pp[sel_idx])
-
+        conf = pred_cof[sel_idx]
         img = img[0].cpu().numpy()
         img = img.reshape((300, 300, 3))
         img = (img * 128 + np.asarray([[127, 127, 127]])) / 255
         fig, ax = plt.subplots(1)
         imageB_array = resize(img, (600, 1200), anti_aliasing=True)
         ax.imshow(imageB_array, cmap='brg')
-
+        # print(conf)
         bbox_corner = center2corner(bbox_center)
 
         for i in range(0,bbox_corner.shape[0]):
@@ -496,10 +494,11 @@ class TestPlot(unittest.TestCase):
             val_cof = np.asarray(val_cof)
         # train_loss = train_loc + train_cof
         # val_loss =
-        plt.plot(train_loc[:, 0], train_loc[:, 1])  # loss value
-        # plt.plot(train_cof[:, 0], train_cof[:, 1])  # loss value
-        plt.plot(val_loc[:, 0], val_loc[:, 1])  # loss value
-        # plt.plot(val_cof[:, 0], val_cof[:, 1])  # loss value
+        fig, ax = plt.subplots(2)
+        ax[0].plot(train_loc[:, 0], train_loc[:, 1])  # loss value
+        ax[0].plot(val_loc[:, 0], val_loc[:, 1])  # loss value
+        ax[1].plot(train_cof[:, 0], train_cof[:, 1])  # loss value
+        ax[1].plot(val_cof[:, 0], val_cof[:, 1])  # loss value
         plt.show()
 
 class TestRabdom2(unittest.TestCase):
@@ -507,19 +506,18 @@ class TestRabdom2(unittest.TestCase):
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
         torch.set_printoptions(precision=10)
         prior_layer_cfg = [
-            # Example:
-            {'layer_name': 'Conv5', 'feature_dim_hw': (38, 38), 'bbox_size': (30, 30),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv11', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv14_2', 'feature_dim_hw': (10, 10), 'bbox_size': (111, 111),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv15_2', 'feature_dim_hw': (5, 5), 'bbox_size': (162, 162),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv16_2', 'feature_dim_hw': (3, 3), 'bbox_size': (213, 213),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)},
-            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (264, 264),
-             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, 1.0)}
+            {'layer_name': 'Conv5', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv11', 'feature_dim_hw': (10, 10), 'bbox_size': (105, 105),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv14_2', 'feature_dim_hw': (5, 5), 'bbox_size': (150, 150),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv15_2', 'feature_dim_hw': (3, 3), 'bbox_size': (195, 195),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv16_2', 'feature_dim_hw': (2, 2), 'bbox_size': (240, 240),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')},
+            {'layer_name': 'Conv17_2', 'feature_dim_hw': (1, 1), 'bbox_size': (285, 285),
+             'aspect_ratio': (1.0, 1 / 2, 1 / 3, 2.0, 3.0, '1t')}
         ]
         pp = generate_prior_bboxes(prior_layer_cfg)
 
