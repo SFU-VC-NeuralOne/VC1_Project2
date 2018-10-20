@@ -62,12 +62,12 @@ def load_data(picture_path, label_path):
                                 bbox.append(np.asarray([left_top, right_bottom]).flatten())
                                 # print('left',left_top)
                                 # print('right', left_top)
-                            if (object['label'] in human_list):
-                                polygons = np.asarray(object['polygon'], dtype=np.float32)
-                                left_top = np.min(polygons, axis=0)
-                                right_bottom = np.max(polygons, axis=0)
-                                label.append(2)
-                                bbox.append(np.asarray([left_top, right_bottom]).flatten())
+                            # if (object['label'] in human_list):
+                            #     polygons = np.asarray(object['polygon'], dtype=np.float32)
+                            #     left_top = np.min(polygons, axis=0)
+                            #     right_bottom = np.max(polygons, axis=0)
+                            #     label.append(2)
+                            #     bbox.append(np.asarray([left_top, right_bottom]).flatten())
                                 #classes.append({'class': 'human', 'position':[left_top, right_bottom]})
                         if(len(label)!=0):
                             data_list.append({'file_path':img_file_path, 'label':[label,bbox]})
