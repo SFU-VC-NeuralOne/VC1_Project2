@@ -90,7 +90,7 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     union = area_a + area_b - inter
 
     temp = torch.transpose((inter / union), 0, 1)
-    # temp = inter/union
+    #temp = inter/union
     return temp
 
 def iou1(a: torch.Tensor, b: torch.Tensor):
@@ -151,7 +151,7 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     assert prior_bboxes.shape[1] == 4
 
     # print('gt_bbox',gt_bboxes.dtype)
-    iou_list = iou(prior_bboxes,gt_bboxes)
+    iou_list = iou(prior_bboxes, gt_bboxes)
 
     # iou_list = torch.tensor([]).cuda()
     # for i in range(0, gt_bboxes.shape[0]):
@@ -298,7 +298,7 @@ def nms_bbox(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_th
             # Tip: use prob_threshold to set the prior that has higher scores and filter out the low score items for fast
             # computation
 
-        pass
+
 
     sel_bbox = sel_bbox[1:]
     print('selected box in num', sel_ind)

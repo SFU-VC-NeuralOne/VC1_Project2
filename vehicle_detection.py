@@ -15,25 +15,26 @@ from ssd_net import SSD
 import pickle
 import torch.nn.functional as F
 
-cityscape_label_dir = '../cityscapes_samples_labels'
-cityscape_img_dir ='../cityscapes_samples'
-learning_rate = 1e-4
+# cityscape_label_dir = '../cityscapes_samples_labels'
+# cityscape_img_dir ='../cityscapes_samples'
+learning_rate = 1e-3
 Tuning = False
 
 
 # cityscape_label_dir = '/home/yza476/SSD/cityscapes_samples_labels'
 # cityscape_img_dir ='/home/yza476/SSD/cityscapes_samples'
 
-# cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
-# cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
+cityscape_label_dir = '/home/datasets/full_dataset_labels/train_extra'
+cityscape_img_dir ='/home/datasets/full_dataset/train_extra'
 
 pth_path='../'
 
 def load_data(picture_path, label_path):
     data_list = []
-    vehicle_list = ['car', 'cargroup','truck', 'truckgroup', 'bus', 'busgroup', 'train', 'traingroup', 'tram',
-                    'motorcycle', 'motorcyclegroup', 'bicycle', 'bicyclegroup', 'caravan', 'trailer']
-    human_list = ['person', 'rider', 'persongroup', 'ridergroup']
+    vehicle_list = ['car', 'cargroup','truck', 'truckgroup', 'bus', 'busgroup']
+    # 'train', 'traingroup', 'tram',
+    #                 'motorcycle', 'motorcyclegroup', 'bicycle', 'bicyclegroup', 'caravan', 'trailer']
+    # human_list = ['person', 'rider', 'persongroup', 'ridergroup']
     if os.path.isfile('datalist.pkl'):
         with open('datalist.pkl', 'rb') as f:
             data_list = pickle.load(f)
@@ -97,7 +98,7 @@ def train(net, train_data_loader, validation_data_loader):
     val_conf_loss=[]
     best_valid_loss = 1000
 
-    max_epochs = 10
+    max_epochs = 45
     itr = 0
 
     for epoch_idx in range(0, max_epochs):
@@ -197,7 +198,7 @@ def main():
     data_list = load_data(cityscape_img_dir, cityscape_label_dir)
     random.shuffle(data_list)
     num_total_items = len(data_list)
-    net = SSD(3)
+    net = SSD(2)
 
     # Training set, ratio: 80%
     num_train_sets = 0.8 * num_total_items
@@ -207,7 +208,7 @@ def main():
     # Create dataloaders for training and validation
     train_dataset = CityScapeDataset(train_set_list)
     train_data_loader = torch.utils.data.DataLoader(train_dataset,
-                                                    batch_size=8,
+                                                    batch_size=128,
                                                     shuffle=True,
                                                     num_workers=0)
     print('Total training items', len(train_dataset), ', Total training mini-batches in one epoch:',
@@ -215,7 +216,7 @@ def main():
 
     validation_dataset = CityScapeDataset(validation_set_list)
     validation_data_loader = torch.utils.data.DataLoader(validation_dataset,
-                                                         batch_size=8,
+                                                         batch_size=128,
                                                          shuffle=True,
                                                          num_workers=0)
     print('Total validation items:', len(validation_dataset))

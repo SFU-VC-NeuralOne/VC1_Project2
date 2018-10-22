@@ -228,14 +228,14 @@ class TestDataLoad(unittest.TestCase):
         pp = generate_prior_bboxes(prior_layer_cfg)
 
 
-        test_list = load_data('../Debugimage', '../Debuglabel')
-        # test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
+        #test_list = load_data('../Debugimage', '../Debuglabel')
+        test_list = load_data('../cityscapes_samples', '../cityscapes_samples_labels')
         print(test_list)
-        gt_bbox = np.asarray(test_list[0]['label'][1])*[1200/2048, 600/1024, 1200/2048, 600/1024]
+        gt_bbox = np.asarray(test_list[0]['label'][1])*[300/2048, 300/1024, 300/2048, 300/1024]
         print('ground truth from file:', test_list[0]['label'][0])
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
-                                                        batch_size=8,
+                                                        batch_size=1,
                                                         shuffle=True,
                                                         num_workers=0)
         idx, (img, bbox, label) = next(enumerate(test_data_loader))
@@ -243,7 +243,7 @@ class TestDataLoad(unittest.TestCase):
         label= label[0]
         print(bbox.shape, label.shape)
 
-        print('matched label', label[np.where(label > 0)], np.where(label > 0))
+        print('matched label', label[np.where(label > 0)], np.where(label > 0), label.shape)
         print('first bbox from data_set:', bbox[0], label[0])
         bbox_center = loc2bbox(bbox, pp)
         bbox_corner = center2corner(bbox_center)
@@ -255,16 +255,19 @@ class TestDataLoad(unittest.TestCase):
         #cv2.imshow("img", img)
         # Create figure and axes
         fig, ax = plt.subplots(1)
-        imageB_array = resize(img, (600, 1200), anti_aliasing=True)
+        imageB_array = resize(img, (300, 300), anti_aliasing=True)
         ax.imshow(imageB_array, cmap='brg')
         bbox_corner = bbox_corner.cpu().numpy()
         bbox_corner = bbox_corner[np.where(label > 0)]
         temp_lab = label[np.where(label > 0)]
         print('matched bbox ======', bbox_corner)
+        pp = center2corner(pp)
+        pp = pp[np.where(label > 0)]
+        print('864 tensor: ',pp)
         for i in range(0,bbox_corner.shape[0]):
             if temp_lab[i] == 1 :
             # print('i point', bbox_corner[i, 0]*600, bbox_corner[i, 1]*300,(bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300)
-                rect = patches.Rectangle((bbox_corner[i, 0]*1200, bbox_corner[i, 1]*600), (bbox_corner[i, 2]-bbox_corner[i, 0])*1200, (bbox_corner[i, 3]-bbox_corner[i, 1])*600, linewidth=2, edgecolor='r', facecolor='none') # Create a Rectangle patch
+                rect = patches.Rectangle((bbox_corner[i, 0]*300, bbox_corner[i, 1]*300), (bbox_corner[i, 2]-bbox_corner[i, 0])*300, (bbox_corner[i, 3]-bbox_corner[i, 1])*300, linewidth=2, edgecolor='r', facecolor='none') # Create a Rectangle patch
                 ax.add_patch(rect) # Add the patch to the Axes
             else:
                 rect = patches.Rectangle((bbox_corner[i, 0] * 1200, bbox_corner[i, 1] * 600),
@@ -272,14 +275,19 @@ class TestDataLoad(unittest.TestCase):
                                          (bbox_corner[i, 3] - bbox_corner[i, 1]) * 600, linewidth=2, edgecolor='y',
                                          facecolor='none')  # Create a Rectangle patch
                 ax.add_patch(rect)  # Add the patch to the Axes
-        #     print(i)
-
-        for i in range(0, gt_bbox.shape[0]):
-            rect = patches.Rectangle((gt_bbox[i][0], gt_bbox[i][1]),
-                                     (gt_bbox[i][2] - gt_bbox[i][0]),
-                                     (gt_bbox[i][3] - gt_bbox[i][1]), linewidth=1, edgecolor='g',
+        for i in range(0, pp.shape[0]):
+            rect = patches.Rectangle((pp[i, 0] * 300, pp[i, 1] * 300),
+                                     (pp[i, 2] - pp[i, 0]) * 300,
+                                     (pp[i, 3] - pp[i, 1]) * 300, linewidth=1, edgecolor='blue',
                                      facecolor='none')  # Create a Rectangle patch
             ax.add_patch(rect)  # Add the patch to the Axes
+
+        # for i in range(0, gt_bbox.shape[0]):
+        #     rect = patches.Rectangle((gt_bbox[i][0], gt_bbox[i][1]),
+        #                              (gt_bbox[i][2] - gt_bbox[i][0]),
+        #                              (gt_bbox[i][3] - gt_bbox[i][1]), linewidth=1, edgecolor='g',
+        #                              facecolor='none')  # Create a Rectangle patch
+        #     ax.add_patch(rect)  # Add the patch to the Axes
 
 
 
@@ -419,6 +427,7 @@ class TestBbox2Loc(unittest.TestCase):
 class TestRabdom(unittest.TestCase):
     def test_random(self):
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
         torch.set_printoptions(precision=10)
         prior_layer_cfg = [
             {'layer_name': 'Conv5', 'feature_dim_hw': (19, 19), 'bbox_size': (60, 60),
@@ -442,11 +451,11 @@ class TestRabdom(unittest.TestCase):
 
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
-                                                       batch_size=1,
+                                                       batch_size=8,
                                                        shuffle=True,
                                                        num_workers=0)
         lfw_dataset_dir = '../'
-        test_net = ssd_net.SSD(3)
+        test_net = ssd_net.SSD(2)
         test_net_state = torch.load(os.path.join(lfw_dataset_dir, 'ssd_net.pth'))
         test_net.load_state_dict(test_net_state)
         #test_net.eval()
@@ -458,24 +467,25 @@ class TestRabdom(unittest.TestCase):
         import torch.nn.functional as F
         test_cof_score = F.softmax(pred_cof)
         print(test_cof_score)
-        sel_idx = nms_bbox(pred_loc.detach(), pp, test_cof_score.detach(),overlap_threshold=0.5, prob_threshold=0.25)
+        sel_idx = nms_bbox(pred_loc.detach(), pp, test_cof_score.detach(),overlap_threshold=0.5, prob_threshold=0.3)
         # sel_idx = np.flatten(sel_idx)
         # print('select idx, keep',sel_idx, keep)
         sel_bboxes = pred_loc.detach()[sel_idx]
+        print('slected bbox',sel_bboxes)
         bbox_center = loc2bbox(sel_bboxes, pp[sel_idx])
         conf = pred_cof[sel_idx]
         img = img[0].cpu().numpy()
         img = img.reshape((300, 300, 3))
         img = (img * 128 + np.asarray([[127, 127, 127]])) / 255
         fig, ax = plt.subplots(1)
-        imageB_array = resize(img, (600, 1200), anti_aliasing=True)
+        imageB_array = resize(img, (600, 600), anti_aliasing=True)
         ax.imshow(imageB_array, cmap='brg')
         # print(conf)
         bbox_corner = center2corner(bbox_center)
 
         for i in range(0,bbox_corner.shape[0]):
             # print('i point', bbox_corner[i, 0]*600, bbox_corner[i, 1]*300,(bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*300)
-            rect = patches.Rectangle((bbox_corner[i, 0]*1200, bbox_corner[i, 1]*600), (bbox_corner[i, 2]-bbox_corner[i, 0])*1200, (bbox_corner[i, 3]-bbox_corner[i, 1])*600, linewidth=2, edgecolor='r', facecolor='none') # Create a Rectangle patch
+            rect = patches.Rectangle((bbox_corner[i, 0]*600, bbox_corner[i, 1]*600), (bbox_corner[i, 2]-bbox_corner[i, 0])*600, (bbox_corner[i, 3]-bbox_corner[i, 1])*600, linewidth=1, edgecolor='r', facecolor='none') # Create a Rectangle patch
             ax.add_patch(rect) # Add the patch to the Axes
         plt.show()
 class TestPlot(unittest.TestCase):
@@ -497,8 +507,8 @@ class TestPlot(unittest.TestCase):
         fig, ax = plt.subplots(2)
         ax[0].plot(train_loc[:, 0], train_loc[:, 1])  # loss value
         ax[0].plot(val_loc[:, 0], val_loc[:, 1])  # loss value
-        ax[1].plot(train_cof[:, 0], train_cof[:, 1])  # loss value
-        ax[1].plot(val_cof[:, 0], val_cof[:, 1])  # loss value
+        ax[1].plot(train_cof[50:, 0], train_cof[50:, 1])  # loss value
+        ax[1].plot(val_cof[5:, 0], val_cof[5:, 1])  # loss value
         plt.show()
 
 class TestRabdom2(unittest.TestCase):
