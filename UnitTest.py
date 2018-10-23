@@ -15,7 +15,7 @@ import torch
 import mobilenet
 from util import module_util
 from bbox_helper import generate_prior_bboxes, match_priors, bbox2loc, center2corner, corner2center, loc2bbox, \
-    nms_bbox, iou
+    nms_bbox, iou, nms_bbox1
 from cityscape_dataset import CityScapeDataset
 from skimage.transform import resize
 
@@ -451,7 +451,7 @@ class TestRabdom(unittest.TestCase):
 
         test_dataset = CityScapeDataset(test_list)
         test_data_loader = torch.utils.data.DataLoader(test_dataset,
-                                                       batch_size=8,
+                                                       batch_size=1,
                                                        shuffle=True,
                                                        num_workers=0)
         lfw_dataset_dir = '../'
@@ -467,7 +467,7 @@ class TestRabdom(unittest.TestCase):
         import torch.nn.functional as F
         test_cof_score = F.softmax(pred_cof)
         print(test_cof_score)
-        sel_idx = nms_bbox(pred_loc.detach(), pp, test_cof_score.detach(),overlap_threshold=0.5, prob_threshold=0.3)
+        sel_idx = nms_bbox1(pred_loc.detach(), pp, test_cof_score.detach(),overlap_threshold=0.5, prob_threshold=0.24)
         # sel_idx = np.flatten(sel_idx)
         # print('select idx, keep',sel_idx, keep)
         sel_bboxes = pred_loc.detach()[sel_idx]
@@ -507,8 +507,8 @@ class TestPlot(unittest.TestCase):
         fig, ax = plt.subplots(2)
         ax[0].plot(train_loc[:, 0], train_loc[:, 1])  # loss value
         ax[0].plot(val_loc[:, 0], val_loc[:, 1])  # loss value
-        ax[1].plot(train_cof[50:, 0], train_cof[50:, 1])  # loss value
-        ax[1].plot(val_cof[5:, 0], val_cof[5:, 1])  # loss value
+        ax[1].plot(train_cof[:, 0], train_cof[:, 1])  # loss value
+        ax[1].plot(val_cof[:, 0], val_cof[:, 1])  # loss value
         plt.show()
 
 class TestRabdom2(unittest.TestCase):
@@ -569,3 +569,28 @@ class TestRabdom2(unittest.TestCase):
             rect = patches.Rectangle((bbox_corner[i, 0]*1200, bbox_corner[i, 1]*600), (bbox_corner[i, 2]-bbox_corner[i, 0])*1200, (bbox_corner[i, 3]-bbox_corner[i, 1])*600, linewidth=2, edgecolor='r', facecolor='none') # Create a Rectangle patch
             ax.add_patch(rect) # Add the patch to the Axes
         plt.show()
+
+class TestNms(unittest.TestCase):
+    def test_nms(self):
+        conf = torch.Tensor([[0.5,0.5], [0.4,0.6], [0.7, 0.3], [0.2,0.8]])
+        bbox = torch.Tensor([[1,2,3,4],[0,0,1,1],[1,1,2,2],[3,3,6,6]])
+        zeros = torch.Tensor(conf.shape[0])
+        prob_threshold = 0.6
+        overlap_threshold = 0.5
+        # vehicle_conf = torch.where(conf>prob_threshold, conf, zeros)
+
+        # print(vehicle_conf==0)
+        # print((vehicle_conf==0).nonzero().reshape(1,-1))
+        #bbox[(vehicle_conf==0).nonzero().reshape(1,-1)] = torch.Tensor([0,0,0,0])
+        # print(bbox)
+        # non_zero_idx = vehicle_conf.nonzero().reshape(1, -1)
+        # sel_idx = []
+        # while (vehicle_conf.nonzero().shape[0] != 0):
+        #     highest_idx = torch.argmax(vehicle_conf, dim=0)
+        #     sel_idx.append(highest_idx)
+        #     iou_list = iou(bbox, bbox[highest_idx].reshape(1, -1))
+        #     print(iou_list)
+        #     overlapped_idx = (iou_list>overlap_threshold).nonzero().reshape(1,-1)
+        #     vehicle_conf[overlapped_idx] = 0
+
+        print('nms idx', nms_bbox1(bbox,bbox,conf))
