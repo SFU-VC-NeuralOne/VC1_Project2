@@ -79,7 +79,7 @@ def load_data(picture_path, label_path):
                                 right_bottom = np.max(polygons, axis=0)
                                 label.append(3)
                                 bbox.append(np.asarray([left_top, right_bottom]).flatten())
-                            if (object['label'] in vehicle_list):
+                            if (object['label'] in human_grp_list):
                                 polygons = np.asarray(object['polygon'], dtype=np.float32)
                                 left_top = np.min(polygons, axis=0)
                                 right_bottom = np.max(polygons, axis=0)

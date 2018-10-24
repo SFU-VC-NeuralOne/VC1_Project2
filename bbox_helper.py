@@ -93,42 +93,42 @@ def iou(a: torch.Tensor, b: torch.Tensor):
     #temp = inter/union
     return temp
 
-def iou1(a: torch.Tensor, b: torch.Tensor):
-    """
-    # Compute the Intersection over Union
-    Note: function iou(a, b) used in match_priors
-    :param a: bounding boxes, dim: (n_items, 4)
-    :param b: bounding boxes, dim: (n_items, 4) or (1, 4) if b is a reference
-    :return: iou value: dim: (n_item)
-    """
-    # [DEBUG] Check if input is the desire shape
-
-    assert a.dim() == 2
-    assert a.shape[1] == 4
-    #print ('b dim',b, b.dim())
-    assert b.dim() == 2
-    assert b.shape[1] == 4
-
-    a = center2corner(a)
-    b = center2corner(b)
-
-
-    a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
-    b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
-
-    x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
-    x_min, y_min = np.minimum(a[:,2],b[:,2]), np.minimum(a[:,3], b[:,3])
-    temp_w = np.maximum((x_min-x_max),0)
-    temp_h = np.maximum((y_min-y_max),0)
-
-    a_and_b = temp_h.cuda()*temp_w.cuda()
-
-    iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
-
-    # [DEBUG] Check if output is the desire shape
-    assert iou.dim() == 1
-    assert iou.shape[0] == a.shape[0]
-    return iou.view(1,a.shape[0])
+# def iou1(a: torch.Tensor, b: torch.Tensor):
+#     """
+#     # Compute the Intersection over Union
+#     Note: function iou(a, b) used in match_priors
+#     :param a: bounding boxes, dim: (n_items, 4)
+#     :param b: bounding boxes, dim: (n_items, 4) or (1, 4) if b is a reference
+#     :return: iou value: dim: (n_item)
+#     """
+#     # [DEBUG] Check if input is the desire shape
+#
+#     assert a.dim() == 2
+#     assert a.shape[1] == 4
+#     #print ('b dim',b, b.dim())
+#     assert b.dim() == 2
+#     assert b.shape[1] == 4
+#
+#     a = center2corner(a)
+#     b = center2corner(b)
+#
+#
+#     a_area =(a[:,2]-a[:,0])*(a[:,3]-a[:,1])
+#     b_area = (b[:,2]-b[:,0])*(b[:,3]-b[:,1])
+#
+#     x_max, y_max = np.maximum(a[:,0],b[:,0]), np.maximum(a[:,1], b[:,1])
+#     x_min, y_min = np.minimum(a[:,2],b[:,2]), np.minimum(a[:,3], b[:,3])
+#     temp_w = np.maximum((x_min-x_max),0)
+#     temp_h = np.maximum((y_min-y_max),0)
+#
+#     a_and_b = temp_h.cuda()*temp_w.cuda()
+#
+#     iou = a_and_b/(a_area.cuda()+b_area.cuda()-a_and_b)
+#
+#     # [DEBUG] Check if output is the desire shape
+#     assert iou.dim() == 1
+#     assert iou.shape[0] == a.shape[0]
+#     return iou.view(1,a.shape[0])
 
 def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels: torch.Tensor, iou_threshold: float):
     """
@@ -235,92 +235,92 @@ def match_priors(prior_bboxes: torch.Tensor, gt_bboxes: torch.Tensor, gt_labels:
     return matched_boxes, matched_labels
 
 
-def nms_bbox(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_threshold=0.6):
-    """
-    Non-maximum suppression for computing best overlapping bounding box for a object
-    Use this function when testing the samples.
-
-    :param bbox_loc: bounding box loc and size, dim: (num_priors, 4)
-    :param bbox_confid_scores: bounding box confidence probabilities, dim: (num_priors, num_classes)
-    :param overlap_threshold: the overlap threshold for filtering out outliers
-    :return: selected bounding box with classes
-    """
-
-    # [DEBUG] Check if input is the desire shape
-    assert bbox_loc.dim() == 2
-    assert bbox_loc.shape[1] == 4
-    assert bbox_confid_scores.dim() == 2
-    assert bbox_confid_scores.shape[0] == bbox_loc.shape[0]
-
-    sel_bbox = torch.tensor([[0., 0., 0., 0.]])
-    sel_ind = np.array([]).reshape((1,-1))
-    _, indices = torch.max(bbox_confid_scores, 0)
-    print("indices", indices)
-
-    bbox_loc = loc2bbox(bbox_loc, prior)
-    bbox_loc = center2corner(bbox_loc)
-
-    # Todo: implement nms for filtering out the unnecessary bounding boxes
-    num_classes = bbox_confid_scores.shape[1]
-    for class_idx in range(1, num_classes):
-        print(indices[class_idx])
-        print("First thing first : ",bbox_confid_scores[indices[class_idx]])
-        if bbox_confid_scores[indices[class_idx]][class_idx] >= prob_threshold :
-            # print(class_idx)
-            # the max probability bbox:
-            temp_bbox = bbox_loc[indices[class_idx]]
-            # temp_bbox = loc2bbox(temp_bbox)
-            sel_ind = np.concatenate((sel_ind.reshape((1,-1)),np.asarray(indices[class_idx]).reshape((1,-1))),axis=1)
-            temp_bbox = temp_bbox.view(-1,4)
-            sel_bbox = torch.cat((sel_bbox,temp_bbox),0)
-
-            # eliminating bbox with classes score less than 0.6
-            bbox_class_flag_index = np.where(bbox_confid_scores[:,class_idx] >= prob_threshold)[0]
-            bbox_class_flag = bbox_confid_scores[:,class_idx] >= prob_threshold
-            if (bbox_class_flag.sum()) >= 1 :
-                selected_class_bbox = bbox_loc[bbox_class_flag]
-                # print('selected flag in nums', selected_class_bbox.sum())
-                # eliminate overlapping bboxes
-                intersection = iou(selected_class_bbox,temp_bbox)
-                print("intersection",intersection)
-                not_overlap_flag = intersection<overlap_threshold
-                print('nof',not_overlap_flag, not_overlap_flag.shape)
-                print('bbcl',bbox_class_flag_index)
-                bbox_class_flag_index = np.asarray(bbox_class_flag_index).reshape(-1,1)
-                not_overlap_flag = np.asarray(not_overlap_flag)
-                new_index = bbox_class_flag_index * not_overlap_flag
-                new_index = new_index[new_index.nonzero()[0]].reshape(1,-1)
-                sel_ind = np.concatenate((sel_ind.reshape((1,-1)), new_index.reshape(1,-1)),axis=1)
-                print('selected box in num', len(sel_ind))
-            #not_overlapping_bboxes = selected_class_bbox[not_overlap_flag[0]]
-
-            #sel_bbox = torch.cat((sel_bbox,not_overlapping_bboxes),0)
-            # Tip: use prob_threshold to set the prior that has higher scores and filter out the low score items for fast
-            # computation
-
-
-
-    sel_bbox = sel_bbox[1:]
-    print('selected box in num', sel_ind)
-    return sel_ind
+# def nms_bbox(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_threshold=0.6):
+#     """
+#     Non-maximum suppression for computing best overlapping bounding box for a object
+#     Use this function when testing the samples.
+#
+#     :param bbox_loc: bounding box loc and size, dim: (num_priors, 4)
+#     :param bbox_confid_scores: bounding box confidence probabilities, dim: (num_priors, num_classes)
+#     :param overlap_threshold: the overlap threshold for filtering out outliers
+#     :return: selected bounding box with classes
+#     """
+#
+#     # [DEBUG] Check if input is the desire shape
+#     assert bbox_loc.dim() == 2
+#     assert bbox_loc.shape[1] == 4
+#     assert bbox_confid_scores.dim() == 2
+#     assert bbox_confid_scores.shape[0] == bbox_loc.shape[0]
+#
+#     sel_bbox = torch.tensor([[0., 0., 0., 0.]])
+#     sel_ind = np.array([]).reshape((1,-1))
+#     _, indices = torch.max(bbox_confid_scores, 0)
+#     print("indices", indices)
+#
+#     bbox_loc = loc2bbox(bbox_loc, prior)
+#     bbox_loc = center2corner(bbox_loc)
+#
+#     # Todo: implement nms for filtering out the unnecessary bounding boxes
+#     num_classes = bbox_confid_scores.shape[1]
+#     for class_idx in range(1, num_classes):
+#         print(indices[class_idx])
+#         print("First thing first : ",bbox_confid_scores[indices[class_idx]])
+#         if bbox_confid_scores[indices[class_idx]][class_idx] >= prob_threshold :
+#             # print(class_idx)
+#             # the max probability bbox:
+#             temp_bbox = bbox_loc[indices[class_idx]]
+#             # temp_bbox = loc2bbox(temp_bbox)
+#             sel_ind = np.concatenate((sel_ind.reshape((1,-1)),np.asarray(indices[class_idx]).reshape((1,-1))),axis=1)
+#             temp_bbox = temp_bbox.view(-1,4)
+#             sel_bbox = torch.cat((sel_bbox,temp_bbox),0)
+#
+#             # eliminating bbox with classes score less than 0.6
+#             bbox_class_flag_index = np.where(bbox_confid_scores[:,class_idx] >= prob_threshold)[0]
+#             bbox_class_flag = bbox_confid_scores[:,class_idx] >= prob_threshold
+#             if (bbox_class_flag.sum()) >= 1 :
+#                 selected_class_bbox = bbox_loc[bbox_class_flag]
+#                 # print('selected flag in nums', selected_class_bbox.sum())
+#                 # eliminate overlapping bboxes
+#                 intersection = iou(selected_class_bbox,temp_bbox)
+#                 print("intersection",intersection)
+#                 not_overlap_flag = intersection<overlap_threshold
+#                 print('nof',not_overlap_flag, not_overlap_flag.shape)
+#                 print('bbcl',bbox_class_flag_index)
+#                 bbox_class_flag_index = np.asarray(bbox_class_flag_index).reshape(-1,1)
+#                 not_overlap_flag = np.asarray(not_overlap_flag)
+#                 new_index = bbox_class_flag_index * not_overlap_flag
+#                 new_index = new_index[new_index.nonzero()[0]].reshape(1,-1)
+#                 sel_ind = np.concatenate((sel_ind.reshape((1,-1)), new_index.reshape(1,-1)),axis=1)
+#                 print('selected box in num', len(sel_ind))
+#             #not_overlapping_bboxes = selected_class_bbox[not_overlap_flag[0]]
+#
+#             #sel_bbox = torch.cat((sel_bbox,not_overlapping_bboxes),0)
+#             # Tip: use prob_threshold to set the prior that has higher scores and filter out the low score items for fast
+#             # computation
+#
+#
+#
+#     sel_bbox = sel_bbox[1:]
+#     print('selected box in num', sel_ind)
+#     return sel_ind
 
 def nms_bbox1(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_threshold=0.6):
     bbox = loc2bbox(bbox_loc, prior)
     bbox = center2corner(bbox)
     sel_idx = []
 
-    for classes in range(1,3):
+    for classes in range(1, bbox_confid_scores.shape[1]):
         vehicle_cof = bbox_confid_scores[:,classes].clone()
         zeros = torch.zeros(vehicle_cof.shape)
         vehicle_cof = torch.where(vehicle_cof > prob_threshold, vehicle_cof, zeros)
-        print('vehicle non zero',(vehicle_cof == 0).nonzero().shape, (vehicle_cof == 0).nonzero().reshape(1, -1))
+        #print('vehicle non zero',(vehicle_cof == 0).nonzero().shape, (vehicle_cof == 0).nonzero().reshape(1, -1))
 
         #bbox[(vehicle_conf == 0).nonzero().reshape(1, -1)] = torch.Tensor([0, 0, 0, 0])
 
         non_zero_idx = vehicle_cof.nonzero().reshape(1, -1)
         while (vehicle_cof.nonzero().shape[0] != 0):
             highest_idx = torch.argmax(vehicle_cof, dim=0)
-            print('the highest',vehicle_cof[highest_idx])
+            #print('the highest',vehicle_cof[highest_idx])
             sel_idx.append(highest_idx)
             iou_list = iou(bbox, bbox[highest_idx].reshape(1, -1))
             overlapped_idx = (iou_list[0] > overlap_threshold).nonzero().reshape(1, -1)
@@ -405,74 +405,3 @@ def corner2center(corner):
     return torch.cat([corner[..., :2]/2 + corner[..., 2:]/2,
                       corner[..., 2:] - corner[..., :2]],dim=-1)
 
-def area_of(left_top, right_bottom) -> torch.Tensor:
-    """Compute the areas of rectangles given two corners.
-    Args:
-        left_top (N, 2): left top corner.
-        right_bottom (N, 2): right bottom corner.
-    Returns:
-        area (N): return the area.
-    """
-    hw = torch.clamp(right_bottom - left_top, min=0.0)
-    return hw[..., 0] * hw[..., 1]
-
-
-def iou_of(boxes0, boxes1, eps=1e-5):
-    """Return intersection-over-union (Jaccard index) of boxes.
-    Args:
-        boxes0 (N, 4): ground truth boxes.
-        boxes1 (N or 1, 4): predicted boxes.
-        eps: a small number to avoid 0 as denominator.
-    Returns:
-        iou (N): IoU values.
-    """
-    overlap_left_top = torch.max(boxes0[..., :2], boxes1[..., :2])
-    overlap_right_bottom = torch.min(boxes0[..., 2:], boxes1[..., 2:])
-
-    overlap_area = area_of(overlap_left_top, overlap_right_bottom)
-    area0 = area_of(boxes0[..., :2], boxes0[..., 2:])
-    area1 = area_of(boxes1[..., :2], boxes1[..., 2:])
-    return overlap_area / (area0 + area1 - overlap_area + eps)
-
-
-def assign_priors(gt_boxes, gt_labels, corner_form_priors,
-                  iou_threshold):
-    """Assign ground truth boxes and targets to priors.
-    Args:
-        gt_boxes (num_targets, 4): ground truth boxes.
-        gt_labels (num_targets): labels of targets.
-        priors (num_priors, 4): corner form priors
-    Returns:
-        boxes (num_priors, 4): real values for priors.
-        labels (num_priros): labels for priors.
-    """
-    # size: num_priors x num_targets
-    ious = iou_of(gt_boxes.unsqueeze(0), corner_form_priors.unsqueeze(1))
-    # size: num_priors
-    best_target_per_prior, best_target_per_prior_index = ious.max(1)
-    # size: num_targets
-    best_prior_per_target, best_prior_per_target_index = ious.max(0)
-
-    for target_index, prior_index in enumerate(best_prior_per_target_index):
-        best_target_per_prior_index[prior_index] = target_index
-    # 2.0 is used to make sure every target has a prior assigned
-    best_target_per_prior.index_fill_(0, best_prior_per_target_index, 2)
-    # size: num_priors
-    labels = gt_labels[best_target_per_prior_index]
-    labels[best_target_per_prior < iou_threshold] = 0  # the backgournd id
-    boxes = gt_boxes[best_target_per_prior_index]
-
-    # boxes = corner2center(boxes)
-    # center_from_priors = corner2center(corner_form_priors)
-    # locations = bbox2loc(boxes, center_from_priors)
-
-    return boxes, labels
-
-def convert_boxes_to_locations(center_form_boxes, center_form_priors, center_variance, size_variance):
-    # priors can have one dimension less
-    if center_form_priors.dim() + 1 == center_form_boxes.dim():
-        center_form_priors = center_form_priors.unsqueeze(0)
-    return torch.cat([
-        (center_form_boxes[..., :2] - center_form_priors[..., :2]) / center_form_priors[..., 2:] / center_variance,
-        torch.log(center_form_boxes[..., 2:] / center_form_priors[..., 2:]) / size_variance
-    ], dim=center_form_boxes.dim() - 1)

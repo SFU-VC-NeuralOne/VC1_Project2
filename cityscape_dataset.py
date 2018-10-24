@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn
 from PIL import Image, ImageEnhance, ImageFilter
 from torch.utils.data import Dataset
-from bbox_helper import generate_prior_bboxes, match_priors, corner2center, assign_priors, center2corner, bbox2loc
+from bbox_helper import generate_prior_bboxes, match_priors, corner2center, center2corner, bbox2loc
 
 
 class CityScapeDataset(Dataset):
