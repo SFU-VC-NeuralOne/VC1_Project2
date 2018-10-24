@@ -179,8 +179,8 @@ class TestNN(unittest.TestCase):
 
         # model = mobilenet.MobileNet()
         # module_util.summary_layers(model,(3,300,300))
-        model = ssd_net.SSD(3)
-        module_util.summary_layers(model, (3, 300, 300))
+        model = ssd_net.SSD(2)
+        module_util.summary_layers(model, (3, 600, 300))
         self.assertEqual('foo'.upper(), 'FOO')
 
 class TestBbox2loc(unittest.TestCase):
@@ -455,7 +455,7 @@ class TestRabdom(unittest.TestCase):
                                                        shuffle=True,
                                                        num_workers=0)
         lfw_dataset_dir = '../'
-        test_net = ssd_net.SSD(2)
+        test_net = ssd_net.SSD(5)
         test_net_state = torch.load(os.path.join(lfw_dataset_dir, 'ssd_net.pth'))
         test_net.load_state_dict(test_net_state)
         #test_net.eval()

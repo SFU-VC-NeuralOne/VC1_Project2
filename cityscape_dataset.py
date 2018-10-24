@@ -109,9 +109,9 @@ class CityScapeDataset(Dataset):
         sample_bboxes = np.asarray(ground_truth[1], dtype=np.float32)
         sample_img = Image.open(file_path)
 
-        augmentation = np.random.randint(0, 3)
+        augmentation = np.random.randint(0, 4)
         sample_img, sample_bboxes, sample_labels = self.crop(sample_img,sample_bboxes,sample_labels)
-        # augmentation=2
+        #augmentation=None
         if augmentation == 0:
             sample_img = ImageEnhance.Brightness(sample_img).enhance(np.random.randint(5, 25) / 10.0)
 

@@ -307,29 +307,25 @@ def nms_bbox(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_th
 def nms_bbox1(bbox_loc, prior, bbox_confid_scores, overlap_threshold=0.5, prob_threshold=0.6):
     bbox = loc2bbox(bbox_loc, prior)
     bbox = center2corner(bbox)
-
-    vehicle_cof = bbox_confid_scores[:,1]
-    zeros = torch.zeros(vehicle_cof.shape)
-    print('zero shape',zeros.shape)
-    print('vehicle_cof', vehicle_cof.shape)
-    vehicle_cof = torch.where(vehicle_cof > prob_threshold, vehicle_cof, zeros)
-    print('vehicle non zero',(vehicle_cof == 0).nonzero().shape, (vehicle_cof == 0).nonzero().reshape(1, -1))
-
-    #bbox[(vehicle_conf == 0).nonzero().reshape(1, -1)] = torch.Tensor([0, 0, 0, 0])
-
-    non_zero_idx = vehicle_cof.nonzero().reshape(1, -1)
     sel_idx = []
-    while (vehicle_cof.nonzero().shape[0] != 0):
-        highest_idx = torch.argmax(vehicle_cof, dim=0)
-        print('the highest',vehicle_cof[highest_idx])
-        sel_idx.append(highest_idx)
-        iou_list = iou(bbox, bbox[highest_idx].reshape(1, -1))
-        overlapped_idx = (iou_list[0] > overlap_threshold).nonzero().reshape(1, -1)
-        #print((iou_list[0] > overlap_threshold).nonzero())
-        vehicle_cof[overlapped_idx] = 0
-        print(vehicle_cof.nonzero().shape[0])
-        if(vehicle_cof.nonzero().shape[0] <50 ):
-            print(vehicle_cof[vehicle_cof.nonzero().reshape(1,-1)])
+
+    for classes in range(1,3):
+        vehicle_cof = bbox_confid_scores[:,classes].clone()
+        zeros = torch.zeros(vehicle_cof.shape)
+        vehicle_cof = torch.where(vehicle_cof > prob_threshold, vehicle_cof, zeros)
+        print('vehicle non zero',(vehicle_cof == 0).nonzero().shape, (vehicle_cof == 0).nonzero().reshape(1, -1))
+
+        #bbox[(vehicle_conf == 0).nonzero().reshape(1, -1)] = torch.Tensor([0, 0, 0, 0])
+
+        non_zero_idx = vehicle_cof.nonzero().reshape(1, -1)
+        while (vehicle_cof.nonzero().shape[0] != 0):
+            highest_idx = torch.argmax(vehicle_cof, dim=0)
+            print('the highest',vehicle_cof[highest_idx])
+            sel_idx.append(highest_idx)
+            iou_list = iou(bbox, bbox[highest_idx].reshape(1, -1))
+            overlapped_idx = (iou_list[0] > overlap_threshold).nonzero().reshape(1, -1)
+            #print((iou_list[0] > overlap_threshold).nonzero())
+            vehicle_cof[overlapped_idx] = 0
 
     return np.asarray(sel_idx)
 
